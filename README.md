@@ -50,8 +50,18 @@ formulario real:
 - **v2 (datos):** ABM de destinatarios y remitentes, plantillas con variables
   `{{...}}`, historial automático con nº de pieza/estado y **hash SHA-256** del
   texto, backup JSON.
-- **v3 (pendiente):** cómputo de plazos en días hábiles, tracking de la pieza,
-  sellado de tiempo y firma digital del PDF de resguardo. Ver `SPEC.md` §5.
+- **v3 (en curso):**
+  - ✅ **Cómputo de plazos** en días hábiles o corridos, con feriados nacionales
+    calculados (fijos + Carnaval/Viernes Santo por Pascua + trasladables Ley
+    27.399) y tabla **editable por año** para cargar los feriados puente /
+    turísticos que fija el PEN por decreto. Marca si el vencimiento cae en día
+    inhábil y sugiere el hábil siguiente.
+  - Pendiente: tracking de la pieza (Correo), sellado de tiempo del PDF de
+    resguardo y firma digital. Ver `SPEC.md` §5.
+
+  > El cómputo de plazos es una **herramienta de apoyo**: no incluye feriados
+  > provinciales ni ferias judiciales, y el cálculo definitivo es
+  > responsabilidad del profesional.
 
 ## Privacidad
 

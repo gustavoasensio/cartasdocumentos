@@ -78,6 +78,7 @@ datalist{position:absolute}
     <button data-t="destinatarios">Destinatarios</button>
     <button data-t="plantillas">Plantillas</button>
     <button data-t="historial">Historial</button>
+    <button data-t="plazos">Plazos</button>
     <button data-t="calibracion">Calibración</button>
   </nav>
 </header>
@@ -219,6 +220,57 @@ datalist{position:absolute}
       Cada CD guardada registra un <b>hash SHA-256</b> del texto. Sirve para acreditar
       después que el contenido no fue modificado respecto de lo efectivamente despachado.
     </div>
+  </fieldset>
+</section>
+
+<!-- ============ PLAZOS ============ -->
+<section id="plazos">
+  <fieldset>
+    <legend>Cómputo de plazos</legend>
+    <div class="note">
+      <b>Herramienta de apoyo — el cómputo definitivo es del profesional.</b>
+      Los feriados con fines turísticos / puente los fija el PEN cada año por decreto
+      y <b>no se calculan solos</b>: verificalos y agregalos en la tabla de abajo.
+      No incluye feriados provinciales ni ferias judiciales locales.
+    </div>
+    <div class="grid g4">
+      <div><label>Fecha base (notificación / despacho)</label><input type="date" id="plFecha"></div>
+      <div><label>Cantidad de días</label><input type="number" id="plDias" value="10" min="1" step="1"></div>
+      <div><label>Tipo de plazo</label>
+        <select id="plTipo">
+          <option value="habiles">Días hábiles (excluye sáb/dom y feriados)</option>
+          <option value="corridos">Días corridos</option>
+        </select></div>
+      <div><label>&nbsp;</label><button class="act" id="btnCalcularPlazo">Calcular vencimiento</button></div>
+    </div>
+    <div class="row" style="margin-top:12px;gap:20px">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt);margin:0">
+        <input type="checkbox" id="plSiguiente" checked style="width:auto">
+        El plazo empieza a correr el día siguiente (no se cuenta el día de la notificación)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt);margin:0">
+        <input type="checkbox" id="plSabado" style="width:auto"> Contar sábado como hábil
+      </label>
+    </div>
+    <div class="note" id="plResultado" style="border-left-color:var(--ok);display:none"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Feriados nacionales — año <span id="plAnioLbl"></span></legend>
+    <p style="color:var(--dim);margin-top:0">
+      Precargados: fijos + Carnaval / Viernes Santo (según Pascua) + trasladables
+      (Ley 27.399). Revisá y <b>agregá los feriados puente / turísticos del año</b>.
+      Se guardan en este equipo.
+    </p>
+    <div class="row" style="margin-bottom:12px">
+      <div><label>Año</label><input type="number" id="plAnio" step="1" style="width:120px"></div>
+      <div><label>Nuevo feriado</label><input type="date" id="plNuevoFecha"></div>
+      <div style="flex:1"><label>Motivo</label><input type="text" id="plNuevoNombre" placeholder="Ej. feriado con fines turísticos"></div>
+      <button class="sm" id="btnAddFeriado">Agregar</button>
+      <button class="sm" id="btnResetFeriados">Restaurar calculados</button>
+    </div>
+    <table><thead><tr><th style="width:130px">Fecha</th><th>Día</th><th>Motivo</th><th>Origen</th><th></th></tr></thead>
+    <tbody id="tbFeriados"></tbody></table>
   </fieldset>
 </section>
 
@@ -733,6 +785,138 @@ async function refrescarListas(){
 }
 async function refrescarTodo(){ await pintarDest(); await pintarRem(); await pintarPlant(); await pintarHist(); await refrescarListas(); }
 
+/* ═══════════════════════════════════════════════════════════════
+   PLAZOS  (v3) — cómputo en días hábiles/corridos + feriados AR
+   ═══════════════════════════════════════════════════════════════ */
+const DOW = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const parseYMD = s => { if(!s) return null; const [y,m,d]=s.split('-').map(Number);
+  return (y&&m&&d) ? new Date(y, m-1, d, 12) : null; };
+const ymd = dt => dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+const addDays = (dt,n) => { const x=new Date(dt); x.setDate(x.getDate()+n); return x; };
+const fmtLargo = dt => dt.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// Domingo de Pascua (algoritmo de Meeus/Jones/Butcher, calendario gregoriano)
+function pascua(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,
+        f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,
+        i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  return new Date(y, mes-1, dia, 12);
+}
+// Traslado de feriados trasladables (Ley 27.399): martes/miércoles → lunes previo;
+// jueves/viernes → lunes siguiente; resto queda igual.
+function trasladar(dt){
+  const w=dt.getDay();
+  if(w===2) return addDays(dt,-1);
+  if(w===3) return addDays(dt,-2);
+  if(w===4) return addDays(dt, 4);
+  if(w===5) return addDays(dt, 3);
+  return dt;
+}
+function feriadosCalculados(y){
+  const P=pascua(y), list=[];
+  const add=(dt,nombre,origen='calculado')=>list.push({date:ymd(dt),nombre,origen});
+  add(new Date(y,0,1,12),  'Año Nuevo');
+  add(addDays(P,-48),      'Carnaval');
+  add(addDays(P,-47),      'Carnaval');
+  add(addDays(P,-2),       'Viernes Santo');
+  add(new Date(y,2,24,12), 'Día de la Memoria por la Verdad y la Justicia');
+  add(new Date(y,3,2,12),  'Día del Veterano y de los Caídos en Malvinas');
+  add(new Date(y,4,1,12),  'Día del Trabajador');
+  add(new Date(y,4,25,12), 'Día de la Revolución de Mayo');
+  add(trasladar(new Date(y,5,17,12)), 'Paso a la Inmortalidad del Gral. Güemes','trasladable');
+  add(new Date(y,5,20,12), 'Paso a la Inmortalidad del Gral. Belgrano');
+  add(new Date(y,6,9,12),  'Día de la Independencia');
+  add(trasladar(new Date(y,7,17,12)), 'Paso a la Inmortalidad del Gral. San Martín','trasladable');
+  add(trasladar(new Date(y,9,12,12)), 'Día del Respeto a la Diversidad Cultural','trasladable');
+  add(trasladar(new Date(y,10,20,12)),'Día de la Soberanía Nacional','trasladable');
+  add(new Date(y,11,8,12), 'Inmaculada Concepción de María');
+  add(new Date(y,11,25,12),'Navidad');
+  return list.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+let FERIADOS = {};                 // { año: [ {date,nombre,origen} ] } (curado por el usuario)
+const _setCache = {};
+function ensureYear(y){ if(!FERIADOS[y]) FERIADOS[y]=feriadosCalculados(y).map(f=>({...f})); }
+function feriadosDe(y){ return FERIADOS[y] || feriadosCalculados(y); }
+function feriadosSet(y){ if(!_setCache[y]) _setCache[y]=new Set(feriadosDe(y).map(f=>f.date)); return _setCache[y]; }
+async function guardarFeriados(){ for(const k in _setCache) delete _setCache[k]; await put('config',{clave:'feriados', valor:FERIADOS}); }
+function esHabil(dt, sabHabil){
+  const w=dt.getDay();
+  if(w===0) return false;
+  if(w===6 && !sabHabil) return false;
+  return !feriadosSet(dt.getFullYear()).has(ymd(dt));
+}
+
+function calcularPlazo(){
+  const base = parseYMD(v('plFecha'));
+  if(!base) return toast('Cargá la fecha base.', true);
+  const dias = parseInt(v('plDias'),10);
+  if(!dias || dias<1) return toast('Cantidad de días inválida.', true);
+  const tipo = $('plTipo').value, sig=$('plSiguiente').checked, sab=$('plSabado').checked;
+  const start = sig ? addDays(base,1) : base;
+  let venc, saltados=0;
+  if(tipo==='corridos'){
+    venc = addDays(start, dias-1);
+  } else {
+    let count=0, d=new Date(start), guard=0;
+    while(guard++ < 6000){
+      if(esHabil(d,sab)){ count++; if(count===dias){ venc=new Date(d); break; } }
+      else saltados++;
+      d=addDays(d,1);
+    }
+  }
+  if(!venc) return toast('No se pudo calcular (revisá los datos).', true);
+  const inhabil = !esHabil(venc,sab);
+  let prox=new Date(venc); let g=0; while(!esHabil(prox,sab) && g++<400) prox=addDays(prox,1);
+
+  let html = '<b>Vencimiento: '+fmtLargo(venc)+'</b>  ('+ymd(venc)+')';
+  html += '<br><span style="color:var(--dim)">'+(tipo==='corridos'
+    ? dias+' días corridos desde el '+ymd(start)
+    : dias+' días hábiles desde el '+ymd(start)+' — '+saltados+' días inhábiles salteados')+'.</span>';
+  if(sig) html += '<br><span style="color:var(--dim)">No se contó el día de la notificación ('+ymd(base)+').</span>';
+  if(inhabil) html += '<br>⚠ El vencimiento cae en día inhábil. En sede judicial el plazo suele prorrogarse '+
+    'al primer día hábil siguiente: <b>'+fmtLargo(prox)+'</b> ('+ymd(prox)+').';
+  const r=$('plResultado'); r.innerHTML=html; r.style.display='block';
+}
+
+function pintarFeriados(){
+  const y = parseInt(v('plAnio'),10) || new Date().getFullYear();
+  $('plAnioLbl').textContent = y;
+  const list = feriadosDe(y).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  $('tbFeriados').innerHTML = list.map(f=>{
+    const dt=parseYMD(f.date), dow=dt?DOW[dt.getDay()]:'';
+    const finde = dt && (dt.getDay()===0||dt.getDay()===6);
+    return '<tr><td>'+f.date+'</td><td'+(finde?' style="color:var(--dim)"':'')+'>'+dow+'</td>'+
+      '<td>'+esc(f.nombre)+'</td><td><span class="pill">'+(f.origen||'manual')+'</span></td>'+
+      '<td style="text-align:right"><button class="sm" data-delf="'+f.date+'§'+esc(f.nombre)+'">✕</button></td></tr>';
+  }).join('') || '<tr><td colspan="5" style="color:var(--dim)">Sin feriados.</td></tr>';
+  $('tbFeriados').querySelectorAll('[data-delf]').forEach(b=>b.onclick=async()=>{
+    const [date,nombre]=b.dataset.delf.split('§');
+    ensureYear(y);
+    let quitado=false;
+    FERIADOS[y]=FERIADOS[y].filter(f=>{ if(!quitado && f.date===date && f.nombre===nombre){quitado=true;return false;} return true; });
+    await guardarFeriados(); pintarFeriados();
+  });
+}
+
+$('btnCalcularPlazo').onclick = calcularPlazo;
+$('plAnio').oninput = pintarFeriados;
+$('plFecha').onchange = ()=>{ const f=v('plFecha'); if(f){ sv('plAnio', f.slice(0,4)); pintarFeriados(); } };
+$('btnAddFeriado').onclick = async ()=>{
+  const f=v('plNuevoFecha'); if(!f) return toast('Elegí la fecha del feriado.', true);
+  const y=parseInt(f.slice(0,4),10); ensureYear(y);
+  FERIADOS[y].push({date:f, nombre:v('plNuevoNombre')||'Feriado', origen:'manual'});
+  FERIADOS[y].sort((a,b)=>a.date.localeCompare(b.date));
+  await guardarFeriados(); sv('plAnio', String(y)); pintarFeriados();
+  sv('plNuevoFecha',''); sv('plNuevoNombre',''); toast('Feriado agregado.');
+};
+$('btnResetFeriados').onclick = async ()=>{
+  const y=parseInt(v('plAnio'),10)||new Date().getFullYear();
+  FERIADOS[y]=feriadosCalculados(y).map(f=>({...f}));
+  await guardarFeriados(); pintarFeriados(); toast('Feriados '+y+' restaurados a los calculados.');
+};
+
 (async function init(){
   await abrirDB();
   const cfgC = (await all('config')).find(c=>c.clave==='coords');
@@ -743,6 +927,13 @@ async function refrescarTodo(){ await pintarDest(); await pintarRem(); await pin
     sv('txSizeA',TEXTOCFG.sizeA);sv('txInterA',TEXTOCFG.interA);sv('txMaxA',TEXTOCFG.maxA); }
   pintarCoords(); infoOffset(); await refrescarTodo();
   sv('lugarfecha', 'Mendoza, '+new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'}));
+
+  // Plazos: cargar feriados curados y setear valores por defecto
+  const cfgF = (await all('config')).find(c=>c.clave==='feriados');
+  if(cfgF && cfgF.valor) FERIADOS = cfgF.valor;
+  const hoy = new Date();
+  sv('plFecha', ymd(hoy)); sv('plAnio', String(hoy.getFullYear()));
+  pintarFeriados();
 })();
 </script>
 </body>
