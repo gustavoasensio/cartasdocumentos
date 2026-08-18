@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impresor de Cartas Documento</title>
+  <style>
+/* ==========================================================================
+   Impresor de Cartas Documento — estilos
+   ========================================================================== */
+
+:root {
+  --bg: #f2f4f7;
+  --panel-bg: #ffffff;
+  --border: #d6dae1;
+  --text: #1c2430;
+  --muted: #66707d;
+  --accent: #1f6feb;
+  --accent-dark: #1552b8;
+  --sheet-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ----------------------------- Barra superior ---------------------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+}
+.topbar h1 { font-size: 17px; margin: 0; }
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.mode-switch { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+
+/* ------------------------------- Layout ---------------------------------- */
+.layout {
+  display: flex;
+  height: calc(100vh - 53px);
+}
+
+/* ----------------------------- Panel de carga ---------------------------- */
+.panel {
+  width: 360px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+}
+.field-section { margin-bottom: 18px; }
+.field-section h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.field input, .field textarea {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+.field textarea { resize: vertical; line-height: 1.4; }
+.field input:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.15);
+}
+.field-row { display: flex; gap: 8px; }
+.field-row .field { flex: 1; }
+
+/* ------------------------------ Calibración ------------------------------ */
+.calib {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  background: #fafbfc;
+}
+.calib summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.calib label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+.calib input[type="number"] {
+  width: 100%; padding: 5px 7px; font: inherit; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.calib label.checkbox { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.calib label.checkbox input { width: auto; }
+
+/* ------------------------------- Botones --------------------------------- */
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover { background: #f0f2f5; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dark); }
+button.ghost { background: transparent; color: var(--muted); }
+.panel-actions { margin: 8px 0; }
+.hint { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.hint.small { margin-top: 12px; }
+.hint.steps { margin: 6px 0; padding-left: 18px; }
+.hint.steps li { margin-bottom: 4px; }
+button.full { width: 100%; margin: 4px 0 10px; }
+
+/* ------------------------------ Vista previa ----------------------------- */
+.preview-area { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; }
+.preview-scroll { align-self: flex-start; }
+
+/* La hoja se define en milímetros reales (Oficio) para que la impresión sea 1:1. */
+.sheet {
+  position: relative;
+  width: 215mm;
+  height: 335mm;
+  background: #fff;
+  box-shadow: var(--sheet-shadow);
+  overflow: hidden;
+}
+
+/* Cuadrícula de calibración (cada 10 mm). No se imprime. */
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(31,111,235,0.12) 0.2mm, transparent 0.2mm),
+    linear-gradient(to bottom, rgba(31,111,235,0.12) 0.2mm, transparent 0.2mm);
+  background-size: 10mm 10mm;
+  pointer-events: none;
+}
+
+/* Contenedor donde se aplica la corrección afín de calibración.
+   El origen arriba-izquierda es imprescindible para que escala + traslación
+   se apliquen respecto del borde de la hoja. */
+.content, .guides { position: absolute; inset: 0; transform-origin: 0 0; }
+
+/* Imagen de referencia del formulario (sólo pantalla, nunca se imprime). */
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.bg[hidden] { display: none; }
+
+/* Bloque de texto posicionable. */
+.block {
+  position: absolute;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  color: #000;
+}
+.block .ln { line-height: 1.1; }
+.block .ln.bold { font-weight: 700; }
+
+/* Contorno de guía: visible en modo "Formulario completo" y al ubicar. */
+body.mode-full .block,
+body.edit-mode .block {
+  outline: 0.3mm dashed #888;
+  outline-offset: 0.4mm;
+}
+/* Modo ubicar: los bloques se pueden arrastrar. */
+body.edit-mode .block {
+  cursor: move;
+  outline: 0.4mm solid var(--accent);
+  background: rgba(31, 111, 235, 0.06);
+}
+.block-tag {
+  position: absolute;
+  top: -4mm;
+  left: 0;
+  font-size: 2.3mm;
+  font-weight: 700;
+  color: var(--accent);
+  background: #fff;
+  padding: 0 0.6mm;
+  white-space: nowrap;
+  display: none;
+}
+body.edit-mode .block-tag { display: block; }
+
+/* ---------------------------- Hoja de prueba ----------------------------- */
+.test-sheet { position: absolute; inset: 0; }
+.test-frame {
+  position: absolute;
+  border: 0.3mm solid #000;
+}
+.test-note {
+  position: absolute;
+  font-size: 3mm;
+  color: #000;
+  text-align: center;
+  width: 100%;
+  left: 0;
+}
+.test-side {
+  position: absolute;
+  font-size: 2.6mm;
+  color: #000;
+}
+.test-title { font-weight: 700; font-size: 4mm; }
+
+/* ------------------------------ Impresión -------------------------------- */
+@page { size: 215mm 335mm; margin: 0; }
+
+@media print {
+  .no-print, .topbar { display: none !important; }
+  html, body { background: #fff; }
+  .layout { display: block; height: auto; }
+  .preview-area { padding: 0; overflow: visible; display: block; }
+  .preview-scroll { align-self: auto; }
+  .sheet { box-shadow: none; margin: 0; }
+  .grid { display: none !important; }
+
+  /* Nunca se imprimen: fondo de referencia, etiquetas ni resaltado de edición. */
+  .bg, .block-tag { display: none !important; }
+  body.edit-mode .block { outline: none !important; background: none !important; }
+
+  /* Modo hoja de prueba: se imprime sólo el marco patrón, sin corrección. */
+  body.test-mode #content { display: none !important; }
+}
+
+/* En pantalla, la hoja de prueba está oculta salvo que se pida imprimirla. */
+.test-sheet[hidden] { display: none; }
+body.test-mode #content { visibility: hidden; }
+
+  </style>
+</head>
+<body>
+  <!-- ================= Barra superior ================= -->
+  <header class="topbar no-print">
+    <h1>Impresor de Cartas Documento</h1>
+    <div class="topbar-actions">
+      <label class="mode-switch">
+        Modo:
+        <select id="mode">
+          <option value="overlay">Superponer (formulario oficial)</option>
+          <option value="full">Formulario completo (papel blanco)</option>
+        </select>
+      </label>
+      <button id="btn-print" class="primary">Imprimir / PDF</button>
+    </div>
+  </header>
+
+  <div class="layout no-print-container">
+    <!-- ================= Panel de carga ================= -->
+    <aside class="panel no-print">
+      <div id="form-fields"><!-- generado por JS --></div>
+
+      <details class="calib" open>
+        <summary>Ubicar campos sobre el formulario</summary>
+        <p class="hint">
+          Para que el texto caiga en cada recuadro del formulario oficial,
+          cargá una foto o escaneo del formulario y arrastrá cada bloque encima.
+          La imagen es sólo una guía: no se imprime.
+        </p>
+        <label class="checkbox">
+          <input type="checkbox" id="editMode"> Modo ubicar (arrastrar bloques)
+        </label>
+        <label>Imagen del formulario (guía)
+          <input type="file" id="bgFile" accept="image/*">
+        </label>
+        <label>Opacidad de la guía
+          <input type="range" id="bgOpacity" min="0" max="100" value="55">
+        </label>
+        <div class="panel-actions">
+          <button id="btn-bg-clear" class="ghost">Quitar imagen</button>
+          <button id="btn-reset-layout" class="ghost">Restablecer posiciones</button>
+        </div>
+      </details>
+
+      <details class="calib" open>
+        <summary>Calibración de impresión</summary>
+        <p class="hint">
+          Cada impresora imprime unos milímetros corrida. Para ajustarla:
+        </p>
+        <ol class="hint steps">
+          <li>Tené un par de hojas <strong>oficio</strong> en blanco.</li>
+          <li>Tocá <strong>Imprimir hoja de prueba</strong> (elegí papel
+            <strong>Oficio</strong>, márgenes <strong>Ninguno</strong> y escala
+            <strong>100%</strong>).</li>
+          <li>Con una regla, medí los 4 márgenes que realmente imprimió (del
+            borde de la hoja hasta la línea) e ingresálos abajo.</li>
+        </ol>
+        <p class="hint">
+          Si no hiciste la prueba, dejá los valores por defecto: suele funcionar
+          bien. Se guardan en tu navegador.
+        </p>
+
+        <button id="btn-test" class="ghost full">Imprimir hoja de prueba</button>
+
+        <div class="field-row">
+          <label>Margen superior (mm)
+            <input type="number" id="mTop" step="0.5" value="5">
+          </label>
+          <label>Margen inferior (mm)
+            <input type="number" id="mBottom" step="0.5" value="5">
+          </label>
+        </div>
+        <div class="field-row">
+          <label>Margen izquierdo (mm)
+            <input type="number" id="mLeft" step="0.5" value="3">
+          </label>
+          <label>Margen derecho (mm)
+            <input type="number" id="mRight" step="0.5" value="3">
+          </label>
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" id="showGrid"> Mostrar cuadrícula (guía, no se imprime)
+        </label>
+        <button id="btn-reset-calib" class="ghost">Restablecer calibración</button>
+      </details>
+
+      <div class="panel-actions">
+        <button id="btn-clear" class="ghost">Limpiar datos</button>
+      </div>
+      <p class="hint small">
+        Los datos se guardan automáticamente en este navegador. Nada se envía a
+        internet.
+      </p>
+    </aside>
+
+    <!-- ================= Vista previa ================= -->
+    <main class="preview-area">
+      <div class="preview-scroll">
+        <div id="sheet" class="sheet">
+          <img id="bg" class="bg" alt="" hidden>
+          <div id="grid" class="grid" hidden></div>
+          <div id="content" class="content"><!-- bloques posicionados por JS --></div>
+          <div id="test" class="test-sheet" hidden><!-- hoja de prueba por JS --></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+/*
+ * config.js
+ * ---------------------------------------------------------------------------
+ * Definición del formulario "Carta Documento" (Modelo CD de Correo Argentino).
+ *
+ * Coordenadas en MILÍMETROS desde el borde superior izquierdo de la hoja.
+ * La hoja es OFICIO 215 x 335 mm (vertical).
+ *
+ * Se separan dos cosas:
+ *   DATA_FIELDS  -> lo que el usuario ESCRIBE (una sola vez).
+ *   BLOCKS       -> DÓNDE se imprime cada cosa. Un mismo dato puede imprimirse
+ *                   en varios bloques (ej.: Remitente aparece en la copia A.R.
+ *                   y en la copia Carta Documento).
+ *
+ * Las posiciones de los BLOCKS son sólo un punto de partida: con el modo
+ * "Ubicar campos" el usuario los arrastra sobre una imagen del formulario y
+ * quedan guardados en el navegador. No hace falta medir con regla.
+ * ---------------------------------------------------------------------------
+ */
+
+// Hoja Oficio 215 x 335 mm.
+const SHEET = { width: 215, height: 335 };
+
+// Márgenes nominales de la hoja de prueba de calibración (ver README).
+const CALIB_NOMINAL = { top: 5, bottom: 5, left: 3, right: 3 };
+
+// -------- Datos que carga el usuario (panel izquierdo) --------
+const DATA_FIELDS = [
+  { id: 'rem_nombre',    label: 'Apellido y nombre / Razón social', section: 'Remitente' },
+  { id: 'rem_domicilio', label: 'Domicilio',                        section: 'Remitente' },
+  { id: 'rem_localidad', label: 'Localidad',                        section: 'Remitente' },
+  { id: 'rem_cp',        label: 'C.P.',                             section: 'Remitente' },
+  { id: 'rem_provincia', label: 'Provincia',                        section: 'Remitente' },
+
+  { id: 'dest_nombre',    label: 'Apellido y nombre / Razón social', section: 'Destinatario' },
+  { id: 'dest_domicilio', label: 'Domicilio',                        section: 'Destinatario' },
+  { id: 'dest_localidad', label: 'Localidad',                        section: 'Destinatario' },
+  { id: 'dest_cp',        label: 'C.P.',                             section: 'Destinatario' },
+  { id: 'dest_provincia', label: 'Provincia',                        section: 'Destinatario' },
+
+  { id: 'texto', label: 'Texto de la carta', section: 'Cuerpo', type: 'textarea', rows: 12 },
+];
+
+// -------- Bloques imprimibles (posiciones por defecto, en mm) --------
+// kind: 'remitente' | 'destinatario' | 'body'
+//   remitente/destinatario  -> arma 3 renglones (nombre / domicilio / loc-cp-prov)
+//   body                    -> imprime el texto con saltos de línea
+const BLOCKS = [
+  { id: 'ar_rem',  kind: 'remitente',    label: 'Remitente (A.R.)',
+    left: 8,  top: 18,  width: 95, size: 2.7, lineHeight: 5 },
+  { id: 'ar_dest', kind: 'destinatario', label: 'Destinatario (A.R.)',
+    left: 8,  top: 42,  width: 95, size: 2.7, lineHeight: 5 },
+
+  { id: 'cd_rem',  kind: 'remitente',    label: 'Remitente (Carta Doc.)',
+    left: 8,  top: 118, width: 95, size: 2.7, lineHeight: 5 },
+  { id: 'cd_dest', kind: 'destinatario', label: 'Destinatario (Carta Doc.)',
+    left: 8,  top: 142, width: 95, size: 2.7, lineHeight: 5 },
+
+  { id: 'body',    kind: 'body',         label: 'Texto de la carta',
+    left: 118, top: 30, width: 90, size: 2.8, lineHeight: 4.4 },
+];
+
+/*
+ * app.js — impresor de Cartas Documento (Modelo CD).
+ * Depende de config.js (SHEET, CALIB_NOMINAL, DATA_FIELDS, BLOCKS).
+ *
+ * Ideas clave
+ * -----------
+ * - El usuario ESCRIBE los datos una sola vez (DATA_FIELDS).
+ * - Cada BLOCK dice DÓNDE se imprime algo; un dato puede repetirse en varios
+ *   bloques (copia A.R. y copia Carta Documento).
+ * - "Modo ubicar": se carga una imagen del formulario como guía y se arrastran
+ *   los bloques a su lugar. Las posiciones quedan guardadas en el navegador.
+ * - Calibración por hoja de prueba: corrige el desfasaje/escala de la impresora
+ *   (transformación afín aplicada al imprimir, no al ubicar).
+ */
+(function () {
+  'use strict';
+
+  var K = {
+    data:   'cd_data_v1',
+    calib:  'cd_calib_v2',
+    layout: 'cd_layout_v1',
+    ui:     'cd_ui_v1',
+    bg:     'cd_bg_v1',
+  };
+
+  var els = {
+    formFields: document.getElementById('form-fields'),
+    sheet:      document.getElementById('sheet'),
+    content:    document.getElementById('content'),
+    grid:       document.getElementById('grid'),
+    test:       document.getElementById('test'),
+    bg:         document.getElementById('bg'),
+    mode:       document.getElementById('mode'),
+    editMode:   document.getElementById('editMode'),
+    bgFile:     document.getElementById('bgFile'),
+    bgOpacity:  document.getElementById('bgOpacity'),
+    mTop:    document.getElementById('mTop'),
+    mBottom: document.getElementById('mBottom'),
+    mLeft:   document.getElementById('mLeft'),
+    mRight:  document.getElementById('mRight'),
+    showGrid: document.getElementById('showGrid'),
+  };
+
+  var CALIB_DEFAULT = {
+    mTop: CALIB_NOMINAL.top, mBottom: CALIB_NOMINAL.bottom,
+    mLeft: CALIB_NOMINAL.left, mRight: CALIB_NOMINAL.right,
+  };
+  var UI_DEFAULT = { mode: 'overlay', showGrid: false, editMode: false, bgOpacity: 55 };
+
+  // Estado ------------------------------------------------------------------
+  var data   = load(K.data, {});
+  var calib  = load(K.calib, CALIB_DEFAULT);
+  var layout = load(K.layout, {});          // { blockId: {left, top} }
+  var ui     = load(K.ui, UI_DEFAULT);
+
+  // ------------------------------------------------------------------ helpers
+  function load(key, fallback) {
+    try { return Object.assign({}, fallback, JSON.parse(localStorage.getItem(key)) || {}); }
+    catch (e) { return Object.assign({}, fallback); }
+  }
+  function save(key, obj) { try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {} }
+  function mm(v) { return v + 'mm'; }
+  function num(v, d) { var n = parseFloat(v); return isNaN(n) ? d : n; }
+  function pos(b) { var o = layout[b.id] || {}; return { left: num(o.left, b.left), top: num(o.top, b.top) }; }
+
+  // --------------------------------------------------- construir panel de carga
+  function buildForm() {
+    var sections = {}, order = [];
+    DATA_FIELDS.forEach(function (f) {
+      if (!sections[f.section]) { sections[f.section] = []; order.push(f.section); }
+      sections[f.section].push(f);
+    });
+    order.forEach(function (name) {
+      var sec = document.createElement('div');
+      sec.className = 'field-section';
+      var h = document.createElement('h2'); h.textContent = name; sec.appendChild(h);
+      sections[name].forEach(function (f) {
+        var wrap = document.createElement('div'); wrap.className = 'field';
+        var lbl = document.createElement('label'); lbl.textContent = f.label;
+        lbl.setAttribute('for', 'in_' + f.id); wrap.appendChild(lbl);
+        var input = f.type === 'textarea' ? document.createElement('textarea')
+                                          : document.createElement('input');
+        if (f.type === 'textarea') input.rows = f.rows || 6; else input.type = 'text';
+        input.id = 'in_' + f.id;
+        input.value = data[f.id] || '';
+        input.addEventListener('input', function () {
+          data[f.id] = input.value; save(K.data, data); renderBlocks();
+        });
+        wrap.appendChild(input); sec.appendChild(wrap);
+      });
+      els.formFields.appendChild(sec);
+    });
+  }
+
+  // -------------------------------------------------- contenido de cada bloque
+  function linesFor(kind) {
+    function L(text, bold) { return { text: (text || ' '), bold: !!bold }; }
+    if (kind === 'remitente' || kind === 'destinatario') {
+      var p = kind === 'remitente' ? 'rem_' : 'dest_';
+      var loc = [data[p + 'localidad'] || ''];
+      if (data[p + 'cp']) loc.push('C.P. ' + data[p + 'cp']);
+      if (data[p + 'provincia']) loc.push(data[p + 'provincia']);
+      return [
+        L(data[p + 'nombre'], true),
+        L(data[p + 'domicilio']),
+        L(loc.join('   ').trim()),
+      ];
+    }
+    if (kind === 'body') {
+      var t = (data.texto || '').split('\n');
+      return t.map(function (line) { return L(line); });
+    }
+    return [];
+  }
+
+  function renderBlocks() {
+    BLOCKS.forEach(function (b) {
+      var node = document.getElementById('blk_' + b.id);
+      if (!node) {
+        node = document.createElement('div');
+        node.id = 'blk_' + b.id;
+        node.className = 'block';
+        node.dataset.id = b.id;
+        var tag = document.createElement('span');
+        tag.className = 'block-tag'; tag.textContent = b.label;
+        node.appendChild(tag);
+        var body = document.createElement('div');
+        body.className = 'block-body';
+        node.appendChild(body);
+        els.content.appendChild(node);
+      }
+      var bodyEl = node.querySelector('.block-body');
+      bodyEl.innerHTML = '';
+      linesFor(b.kind).forEach(function (l) {
+        var d = document.createElement('div');
+        d.className = 'ln' + (l.bold ? ' bold' : '');
+        d.textContent = l.text;
+        if (b.lineHeight) d.style.lineHeight = mm(b.lineHeight);
+        bodyEl.appendChild(d);
+      });
+      applyBlockGeom(b, node);
+    });
+  }
+
+  function applyBlockGeom(b, node) {
+    var p = pos(b);
+    node.style.left = mm(p.left);
+    node.style.top = mm(p.top);
+    node.style.width = mm(b.width);
+    node.style.fontSize = mm(b.size);
+  }
+
+  // ------------------------------------------------------- calibración (afín)
+  function calcTransform() {
+    var W = SHEET.width, H = SHEET.height, nom = CALIB_NOMINAL;
+    var mL = num(calib.mLeft, nom.left), mR = num(calib.mRight, nom.right);
+    var mT = num(calib.mTop, nom.top),   mB = num(calib.mBottom, nom.bottom);
+    var dX = W - mL - mR, dY = H - mT - mB;
+    var sx = dX > 0 ? (W - nom.left - nom.right) / dX : 1;
+    var sy = dY > 0 ? (H - nom.top - nom.bottom) / dY : 1;
+    var tx = nom.left - mL * sx, ty = nom.top - mT * sy;
+    return 'translate(' + mm(tx) + ',' + mm(ty) + ') scale(' +
+           sx.toFixed(5) + ',' + sy.toFixed(5) + ')';
+  }
+
+  // Al ubicar (edit-mode) se anula la calibración para arrastrar 1:1 sobre la
+  // imagen; la corrección de impresora se aplica sólo para imprimir.
+  function applyCalibration() {
+    els.content.style.transform = ui.editMode ? 'none' : calcTransform();
+    els.grid.hidden = !calib.showGrid;
+  }
+
+  // ------------------------------------------------------------- fondo (guía)
+  function applyBg() {
+    var src = localStorage.getItem(K.bg);
+    if (src) { els.bg.src = src; els.bg.hidden = false; }
+    else { els.bg.removeAttribute('src'); els.bg.hidden = true; }
+    els.bg.style.opacity = (num(ui.bgOpacity, 55) / 100);
+  }
+
+  function applyModeClasses() {
+    document.body.classList.toggle('mode-full', ui.mode === 'full');
+    document.body.classList.toggle('edit-mode', !!ui.editMode);
+  }
+
+  // -------------------------------------------------------------------- drag
+  function pxPerMm() { return els.sheet.getBoundingClientRect().width / SHEET.width; }
+
+  function initDrag() {
+    var active = null; // { b, node, startX, startY, startL, startT }
+    els.content.addEventListener('pointerdown', function (e) {
+      if (!ui.editMode) return;
+      var node = e.target.closest('.block');
+      if (!node) return;
+      var b = BLOCKS.filter(function (x) { return x.id === node.dataset.id; })[0];
+      if (!b) return;
+      var p = pos(b);
+      active = { b: b, node: node, startX: e.clientX, startY: e.clientY,
+                 startL: p.left, startT: p.top };
+      node.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    els.content.addEventListener('pointermove', function (e) {
+      if (!active) return;
+      var k = pxPerMm();
+      var nl = active.startL + (e.clientX - active.startX) / k;
+      var nt = active.startT + (e.clientY - active.startY) / k;
+      nl = Math.max(0, Math.min(SHEET.width - 2, nl));
+      nt = Math.max(0, Math.min(SHEET.height - 2, nt));
+      active.node.style.left = mm(round1(nl));
+      active.node.style.top = mm(round1(nt));
+      layout[active.b.id] = { left: round1(nl), top: round1(nt) };
+    });
+    function end(e) {
+      if (!active) return;
+      try { active.node.releasePointerCapture(e.pointerId); } catch (x) {}
+      save(K.layout, layout);
+      active = null;
+    }
+    els.content.addEventListener('pointerup', end);
+    els.content.addEventListener('pointercancel', end);
+  }
+  function round1(v) { return Math.round(v * 10) / 10; }
+
+  // ------------------------------------------------------------- hoja de prueba
+  function buildTestSheet() {
+    var W = SHEET.width, H = SHEET.height, nom = CALIB_NOMINAL;
+    els.test.innerHTML = '';
+    var frame = document.createElement('div');
+    frame.className = 'test-frame';
+    frame.style.left = mm(nom.left); frame.style.top = mm(nom.top);
+    frame.style.width = mm(W - nom.left - nom.right);
+    frame.style.height = mm(H - nom.top - nom.bottom);
+    els.test.appendChild(frame);
+
+    addNote('HOJA DE PRUEBA DE CALIBRACIÓN', H / 2 - 24, 'test-title');
+    addNote('Imprimí en hoja OFICIO, papel "Oficio", márgenes "Ninguno", escala 100%.<br>' +
+      'Con una regla, medí en mm del BORDE de la hoja a cada línea del marco<br>' +
+      'y cargá esos 4 valores en la calibración. Diseño: sup ' + nom.top + ' / inf ' +
+      nom.bottom + ' / izq ' + nom.left + ' / der ' + nom.right + ' mm.', H / 2 - 12);
+    addSide('MEDIR ↑ (superior)', W / 2 - 20, nom.top + 3);
+    addSide('MEDIR ↓ (inferior)', W / 2 - 20, H - nom.bottom - 8);
+    addSide('MEDIR → (izquierdo)', nom.left + 3, H / 2 + 14);
+    addSide('MEDIR ← (derecho)', W - nom.right - 32, H / 2 + 14);
+
+    function addNote(html, top, cls) {
+      var n = document.createElement('div');
+      n.className = 'test-note' + (cls ? ' ' + cls : '');
+      n.style.top = mm(top); n.innerHTML = html; els.test.appendChild(n);
+    }
+    function addSide(text, left, top) {
+      var s = document.createElement('div');
+      s.className = 'test-side';
+      s.style.left = mm(left); s.style.top = mm(top);
+      s.textContent = text; els.test.appendChild(s);
+    }
+  }
+  function printTest() {
+    buildTestSheet();
+    els.test.hidden = false;
+    document.body.classList.add('test-mode');
+    var cleanup = function () {
+      document.body.classList.remove('test-mode');
+      els.test.hidden = true;
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+    setTimeout(cleanup, 1500);
+  }
+
+  // ------------------------------------------------------------------- UI init
+  function syncControls() {
+    els.mode.value = ui.mode;
+    els.editMode.checked = !!ui.editMode;
+    els.bgOpacity.value = num(ui.bgOpacity, 55);
+    els.mTop.value = calib.mTop; els.mBottom.value = calib.mBottom;
+    els.mLeft.value = calib.mLeft; els.mRight.value = calib.mRight;
+    els.showGrid.checked = !!calib.showGrid;
+  }
+
+  function bindMargin(el, key) {
+    el.addEventListener('input', function () {
+      calib[key] = el.value; save(K.calib, calib); applyCalibration();
+    });
+  }
+
+  function initControls() {
+    syncControls();
+
+    els.mode.addEventListener('change', function () {
+      ui.mode = els.mode.value; save(K.ui, ui); applyModeClasses();
+    });
+    els.editMode.addEventListener('change', function () {
+      ui.editMode = els.editMode.checked; save(K.ui, ui);
+      applyModeClasses(); applyCalibration();
+    });
+    els.bgOpacity.addEventListener('input', function () {
+      ui.bgOpacity = els.bgOpacity.value; save(K.ui, ui); applyBg();
+    });
+    els.bgFile.addEventListener('change', function () {
+      var file = els.bgFile.files && els.bgFile.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try { localStorage.setItem(K.bg, reader.result); } catch (e) {
+          alert('La imagen es muy grande para guardarla. Probá con una más liviana.');
+        }
+        applyBg();
+      };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('btn-bg-clear').addEventListener('click', function () {
+      localStorage.removeItem(K.bg); els.bgFile.value = ''; applyBg();
+    });
+    document.getElementById('btn-reset-layout').addEventListener('click', function () {
+      if (!confirm('¿Volver las posiciones de los bloques a las de fábrica?')) return;
+      layout = {}; save(K.layout, layout); renderBlocks();
+    });
+
+    bindMargin(els.mTop, 'mTop'); bindMargin(els.mBottom, 'mBottom');
+    bindMargin(els.mLeft, 'mLeft'); bindMargin(els.mRight, 'mRight');
+    els.showGrid.addEventListener('change', function () {
+      calib.showGrid = els.showGrid.checked; save(K.calib, calib); applyCalibration();
+    });
+
+    document.getElementById('btn-print').addEventListener('click', function () {
+      if (ui.editMode) {
+        // Al imprimir salimos del modo ubicar para aplicar la calibración.
+        ui.editMode = false; save(K.ui, ui); syncControls();
+        applyModeClasses(); applyCalibration();
+      }
+      window.print();
+    });
+    document.getElementById('btn-test').addEventListener('click', printTest);
+    document.getElementById('btn-reset-calib').addEventListener('click', function () {
+      calib.mTop = CALIB_NOMINAL.top; calib.mBottom = CALIB_NOMINAL.bottom;
+      calib.mLeft = CALIB_NOMINAL.left; calib.mRight = CALIB_NOMINAL.right;
+      calib.showGrid = false; save(K.calib, calib);
+      syncControls(); applyCalibration();
+    });
+    document.getElementById('btn-clear').addEventListener('click', function () {
+      if (!confirm('¿Borrar todos los datos cargados de la carta?')) return;
+      data = {}; save(K.data, data);
+      DATA_FIELDS.forEach(function (f) {
+        var i = document.getElementById('in_' + f.id); if (i) i.value = '';
+      });
+      renderBlocks();
+    });
+  }
+
+  // ------------------------------------------------------------------- arranque
+  buildForm();
+  initControls();
+  renderBlocks();
+  applyModeClasses();
+  applyBg();
+  applyCalibration();
+  initDrag();
+})();
+
+  </script>
+</body>
+</html>
