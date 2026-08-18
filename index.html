@@ -27,21 +27,43 @@
     <aside class="panel no-print">
       <div id="form-fields"><!-- generado por JS --></div>
 
-      <details class="calib">
+      <details class="calib" open>
         <summary>Calibración de impresión</summary>
         <p class="hint">
-          Ajustá estos valores hasta que el texto caiga dentro de los recuadros
-          del formulario. Se guardan en tu navegador.
+          Cada impresora imprime unos milímetros corrida. Para ajustarla:
         </p>
-        <label>Desplazamiento horizontal (mm)
-          <input type="number" id="offsetX" step="0.5" value="0">
-        </label>
-        <label>Desplazamiento vertical (mm)
-          <input type="number" id="offsetY" step="0.5" value="0">
-        </label>
-        <label>Ajuste de tamaño de fuente (%)
-          <input type="number" id="fontScale" step="1" value="100">
-        </label>
+        <ol class="hint steps">
+          <li>Tené un par de hojas <strong>oficio</strong> en blanco.</li>
+          <li>Tocá <strong>Imprimir hoja de prueba</strong> (elegí papel
+            <strong>Oficio</strong>, márgenes <strong>Ninguno</strong> y escala
+            <strong>100%</strong>).</li>
+          <li>Con una regla, medí los 4 márgenes que realmente imprimió (del
+            borde de la hoja hasta la línea) e ingresálos abajo.</li>
+        </ol>
+        <p class="hint">
+          Si no hiciste la prueba, dejá los valores por defecto: suele funcionar
+          bien. Se guardan en tu navegador.
+        </p>
+
+        <button id="btn-test" class="ghost full">Imprimir hoja de prueba</button>
+
+        <div class="field-row">
+          <label>Margen superior (mm)
+            <input type="number" id="mTop" step="0.5" value="5">
+          </label>
+          <label>Margen inferior (mm)
+            <input type="number" id="mBottom" step="0.5" value="5">
+          </label>
+        </div>
+        <div class="field-row">
+          <label>Margen izquierdo (mm)
+            <input type="number" id="mLeft" step="0.5" value="3">
+          </label>
+          <label>Margen derecho (mm)
+            <input type="number" id="mRight" step="0.5" value="3">
+          </label>
+        </div>
+
         <label class="checkbox">
           <input type="checkbox" id="showGrid"> Mostrar cuadrícula (guía, no se imprime)
         </label>
@@ -64,6 +86,7 @@
           <div id="grid" class="grid" hidden></div>
           <div id="guides" class="guides"></div>
           <div id="content" class="content"><!-- texto posicionado por JS --></div>
+          <div id="test" class="test-sheet" hidden><!-- hoja de prueba por JS --></div>
         </div>
       </div>
     </main>

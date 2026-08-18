@@ -118,16 +118,19 @@ button.ghost { background: transparent; color: var(--muted); }
 .panel-actions { margin: 8px 0; }
 .hint { font-size: 11px; color: var(--muted); line-height: 1.4; }
 .hint.small { margin-top: 12px; }
+.hint.steps { margin: 6px 0; padding-left: 18px; }
+.hint.steps li { margin-bottom: 4px; }
+button.full { width: 100%; margin: 4px 0 10px; }
 
 /* ------------------------------ Vista previa ----------------------------- */
 .preview-area { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; }
 .preview-scroll { align-self: flex-start; }
 
-/* La hoja se define en milímetros reales para que la impresión sea 1:1. */
+/* La hoja se define en milímetros reales (Oficio) para que la impresión sea 1:1. */
 .sheet {
   position: relative;
-  width: 210mm;
-  height: 297mm;
+  width: 216mm;
+  height: 330mm;
   background: #fff;
   box-shadow: var(--sheet-shadow);
   overflow: hidden;
@@ -144,8 +147,10 @@ button.ghost { background: transparent; color: var(--muted); }
   pointer-events: none;
 }
 
-/* Contenedor donde se aplica el desplazamiento de calibración. */
-.content, .guides { position: absolute; inset: 0; }
+/* Contenedor donde se aplica la corrección afín de calibración.
+   El origen arriba-izquierda es imprescindible para que escala + traslación
+   se apliquen respecto del borde de la hoja. */
+.content, .guides { position: absolute; inset: 0; transform-origin: 0 0; }
 
 .text-field {
   position: absolute;
@@ -177,8 +182,29 @@ button.ghost { background: transparent; color: var(--muted); }
   transform: translateY(-50%);
 }
 
+/* ---------------------------- Hoja de prueba ----------------------------- */
+.test-sheet { position: absolute; inset: 0; }
+.test-frame {
+  position: absolute;
+  border: 0.3mm solid #000;
+}
+.test-note {
+  position: absolute;
+  font-size: 3mm;
+  color: #000;
+  text-align: center;
+  width: 100%;
+  left: 0;
+}
+.test-side {
+  position: absolute;
+  font-size: 2.6mm;
+  color: #000;
+}
+.test-title { font-weight: 700; font-size: 4mm; }
+
 /* ------------------------------ Impresión -------------------------------- */
-@page { size: 210mm 297mm; margin: 0; }
+@page { size: 216mm 330mm; margin: 0; }
 
 @media print {
   .no-print, .topbar { display: none !important; }
@@ -188,4 +214,13 @@ button.ghost { background: transparent; color: var(--muted); }
   .preview-scroll { align-self: auto; }
   .sheet { box-shadow: none; margin: 0; }
   .grid { display: none !important; }
+
+  /* Modo hoja de prueba: se imprime sólo el marco patrón, sin corrección. */
+  body.test-mode #content,
+  body.test-mode #guides { display: none !important; }
 }
+
+/* En pantalla, la hoja de prueba está oculta salvo que se pida imprimirla. */
+.test-sheet[hidden] { display: none; }
+body.test-mode #content,
+body.test-mode #guides { visibility: hidden; }

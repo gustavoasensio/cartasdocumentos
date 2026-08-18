@@ -16,8 +16,15 @@
  * ---------------------------------------------------------------------------
  */
 
-// Tamaño de la hoja (A4 vertical).
-const SHEET = { width: 210, height: 297 };
+// Tamaño de la hoja (Oficio vertical: 216 x 330 mm).
+// La Carta Documento de Correo Argentino se imprime en hoja oficio.
+const SHEET = { width: 216, height: 330 };
+
+// Márgenes "nominales" con los que se diseña la hoja de prueba de calibración.
+// Son los valores por defecto que ve el usuario. La hoja de prueba dibuja un
+// marco a estas distancias del borde; el usuario mide lo que realmente imprimió
+// su impresora y carga esos 4 valores para corregir posición y escala.
+const CALIB_NOMINAL = { top: 5, bottom: 5, left: 3, right: 3 };
 
 // Definición de cada campo del formulario.
 //   id      : identificador único (también se usa para guardar en el navegador)
@@ -62,23 +69,23 @@ const FIELDS = [
 
   // ----- Cuerpo -----
   { id: 'texto', label: 'Texto de la carta', section: 'Cuerpo',
-    left: 18, top: 96, width: 174, size: 3.2, type: 'textarea', rows: 14,
+    left: 18, top: 96, width: 180, size: 3.2, type: 'textarea', rows: 16,
     lineHeight: 6 /* mm entre renglones del cuerpo */ },
 
   // ----- Pie / firma -----
   { id: 'firma',      label: 'Firma',      section: 'Firma',
-    left: 120, top: 262, width: 75, size: 3.2 },
+    left: 120, top: 291, width: 78, size: 3.2 },
   { id: 'aclaracion', label: 'Aclaración', section: 'Firma',
-    left: 120, top: 269, width: 75, size: 3.0 },
+    left: 120, top: 299, width: 78, size: 3.0 },
 ];
 
 // Recuadros y etiquetas que se dibujan SÓLO en el modo "Formulario completo".
 //   Cada guía es un rectángulo con un rótulo arriba a la izquierda.
 const GUIDES = [
-  { title: 'CARTA DOCUMENTO', left: 15, top: 6, width: 180, height: 15,
+  { title: 'CARTA DOCUMENTO', left: 12, top: 6, width: 192, height: 15,
     header: true },
-  { title: 'REMITENTE',    left: 15, top: 28, width: 180, height: 26 },
-  { title: 'DESTINATARIO', left: 15, top: 60, width: 180, height: 26 },
-  { title: 'TEXTO',        left: 15, top: 92, width: 180, height: 158 },
-  { title: 'FIRMA Y ACLARACIÓN', left: 15, top: 256, width: 180, height: 22 },
+  { title: 'REMITENTE',    left: 12, top: 28, width: 192, height: 26 },
+  { title: 'DESTINATARIO', left: 12, top: 60, width: 192, height: 26 },
+  { title: 'TEXTO',        left: 12, top: 92, width: 192, height: 193 },
+  { title: 'FIRMA Y ACLARACIÓN', left: 12, top: 288, width: 192, height: 24 },
 ];
