@@ -1,74 +1,61 @@
-# Impresor de Cartas Documento
+# Carta Documento — App del Estudio
 
-Aplicación web (100% en el navegador, sin servidor ni dependencias) para
-completar e imprimir **Cartas Documento**. Inspirada en herramientas como
-`imprimir-carta-documento.preimpresos.com`.
+Aplicación web **100 % local, sin backend**, para completar e imprimir Cartas
+Documento sobre el formulario preimpreso de Correo Argentino. Nada de lo que
+cargás sale del equipo (secreto profesional y datos de terceros): el PDF se
+genera en el navegador con `pdf-lib` embebido y funciona offline.
 
-## Características
+> Reconstruida desde cero según [`SPEC.md`](SPEC.md). No copia código ni assets
+> del sitio original; las medidas de un formulario oficial son un hecho físico.
 
-- **Formulario de carga** con datos de remitente, destinatario, cuerpo,
-  lugar/fecha y firma.
-- **Guardado automático** en el navegador (`localStorage`). No se envía nada a
-  internet.
-- **Vista previa a escala real** de la hoja **oficio** (216 × 330 mm, en
-  milímetros), para que la impresión salga 1:1.
-- **Dos modos de impresión:**
-  - **Superponer (formulario oficial):** imprime únicamente el texto, para
-    superponerlo sobre el formulario preimpreso de Correo Argentino.
-  - **Formulario completo (papel blanco):** dibuja además los recuadros y
-    etiquetas, para imprimir todo en una hoja en blanco.
-- **Calibración por hoja de prueba:** imprimís un marco patrón, medís con regla
-  los 4 márgenes reales que salieron de *tu* impresora y los cargás; con eso se
-  corrige tanto el **desplazamiento** como una leve **diferencia de escala**.
-  Incluye cuadrícula opcional de 10 mm como guía. Se guarda para tu impresora.
-- **Impresión / PDF** con el diálogo del navegador (elegí "Guardar como PDF"
-  para generar el archivo).
+## Archivos
+
+| Archivo | Qué es |
+|---|---|
+| `carta-documento.html` | La app completa, en un solo archivo (abrir con doble clic). |
+| `SPEC.md` | Especificación técnica: arquitectura, COORDS, IndexedDB, fórmula de calibración, roadmap y recaudos legales. |
+| `pdf-calibracion/grilla-calibracion.pdf` | Grilla milimetrada para leer coordenadas reales contra la CD física. |
+| `pdf-calibracion/prueba-impresora.pdf` | Marcas en los 4 márgenes para calibrar la impresora. |
+| `pdf-calibracion/muestra-cd.pdf` | Ejemplo de CD generada. |
+
+*(La app también genera la grilla y la hoja de prueba al vuelo, con el tamaño
+de hoja configurado en ese momento.)*
 
 ## Uso
 
-1. Abrí `index.html` en el navegador (doble clic o servilo con cualquier
-   servidor estático).
-2. Completá los datos en el panel izquierdo.
-3. Elegí el modo de impresión arriba a la derecha.
-4. Ajustá la calibración si hace falta (ver abajo).
-5. Tocá **Imprimir / PDF**. En el diálogo verificá:
-   - Tamaño de papel: **Oficio** (216 × 330 mm).
-   - Márgenes: **Ninguno**.
-   - Escala: **100 %** (desactivá "Ajustar al área de impresión").
+1. Abrí `carta-documento.html` en el navegador.
+2. Completá los campos y tocá **Generar PDF de la CD**.
+3. Imprimí **sobre el formulario preimpreso oficial**, en hoja **Oficio**,
+   escala **100 %**, sin "ajustar a página".
 
-## Calibrar tu impresora (hoja de prueba)
+## Lo primero: calibrar (una vez por impresora)
 
-Cada impresora imprime unos milímetros corrida y, a veces, con una leve
-diferencia de escala. Para ajustarla a tu equipo:
+Las coordenadas de `COORDS` son **estimaciones** hasta medirlas contra tu
+formulario real:
 
-1. Tené a mano un par de hojas **oficio** en blanco.
-2. En **Calibración de impresión**, tocá **Imprimir hoja de prueba**. Imprimí
-   con papel **Oficio**, márgenes **Ninguno** y escala **100 %**. Sale un marco
-   patrón (diseñado a 5 mm arriba/abajo y 3 mm a los lados).
-3. Con una regla, medí en milímetros la distancia del **borde de la hoja** hasta
-   cada línea del marco (superior, inferior, izquierdo y derecho).
-4. Cargá esos 4 valores en la calibración. La app calcula la corrección de
-   posición y escala y la aplica a la impresión real.
+1. **Generar grilla milimetrada** → imprimila al 100 % y superponela a trasluz
+   con la CD del Correo. Leé la `(x, y)` en mm donde debe empezar cada campo.
+2. Cargá esos valores en la pestaña **Calibración** (editor de COORDS) y usá
+   **Exportar COORDS como JSON** para tener el mapa definitivo.
+3. **Generar hoja de prueba** → imprimila, medí con regla los 4 márgenes reales
+   y cargálos: queda guardado el **perfil de esa impresora** (corrige
+   desplazamiento y escala).
+4. Imprimí una CD de prueba y compará a trasluz. Iterá.
 
-Si no querés hacer la prueba, dejá los valores por defecto (5 / 5 / 3 / 3):
-suele funcionar bien. La calibración queda guardada en tu navegador.
+## Funcionalidades
 
-> Si algún bloque queda descolocado respecto de los demás (no es un problema
-> global de la impresora sino de este layout), editá sus coordenadas
-> (`left`/`top`, en mm) en [`js/config.js`](js/config.js).
+- **v1 (núcleo):** 18 campos con `maxlength`, contador de caracteres, wrap del
+  cuerpo con aviso de "no entra", generación de PDF oficio, calibración con
+  perfiles por impresora, grilla y hoja de prueba.
+- **v2 (datos):** ABM de destinatarios y remitentes, plantillas con variables
+  `{{...}}`, historial automático con nº de pieza/estado y **hash SHA-256** del
+  texto, backup JSON.
+- **v3 (pendiente):** cómputo de plazos en días hábiles, tracking de la pieza,
+  sellado de tiempo y firma digital del PDF de resguardo. Ver `SPEC.md` §5.
 
-## Estructura
+## Privacidad
 
-```
-index.html        Estructura de la página
-css/styles.css    Estilos y reglas de impresión (@page A4)
-js/config.js      Definición de campos y coordenadas (en mm) — editá acá
-js/app.js         Lógica: formulario, vista previa, calibración, impresión
-```
-
-## Notas
-
-- Todo funciona offline. Podés hospedarlo en cualquier hosting estático
-  (GitHub Pages, Netlify, etc.) o abrir el archivo directamente.
-- Las coordenadas en `config.js` están comentadas y son fáciles de ajustar
-  para adaptarlas a tu formulario o preferencias.
+Sin servidor: los datos viven en `IndexedDB` del navegador, en tu equipo. El
+backup JSON debería guardarse cifrado. La app **no valida el contenido
+jurídico**: el texto de la intimación es responsabilidad del profesional
+firmante.
