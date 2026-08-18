@@ -28,6 +28,28 @@
       <div id="form-fields"><!-- generado por JS --></div>
 
       <details class="calib" open>
+        <summary>Ubicar campos sobre el formulario</summary>
+        <p class="hint">
+          Para que el texto caiga en cada recuadro del formulario oficial,
+          cargá una foto o escaneo del formulario y arrastrá cada bloque encima.
+          La imagen es sólo una guía: no se imprime.
+        </p>
+        <label class="checkbox">
+          <input type="checkbox" id="editMode"> Modo ubicar (arrastrar bloques)
+        </label>
+        <label>Imagen del formulario (guía)
+          <input type="file" id="bgFile" accept="image/*">
+        </label>
+        <label>Opacidad de la guía
+          <input type="range" id="bgOpacity" min="0" max="100" value="55">
+        </label>
+        <div class="panel-actions">
+          <button id="btn-bg-clear" class="ghost">Quitar imagen</button>
+          <button id="btn-reset-layout" class="ghost">Restablecer posiciones</button>
+        </div>
+      </details>
+
+      <details class="calib" open>
         <summary>Calibración de impresión</summary>
         <p class="hint">
           Cada impresora imprime unos milímetros corrida. Para ajustarla:
@@ -83,9 +105,9 @@
     <main class="preview-area">
       <div class="preview-scroll">
         <div id="sheet" class="sheet">
+          <img id="bg" class="bg" alt="" hidden>
           <div id="grid" class="grid" hidden></div>
-          <div id="guides" class="guides"></div>
-          <div id="content" class="content"><!-- texto posicionado por JS --></div>
+          <div id="content" class="content"><!-- bloques posicionados por JS --></div>
           <div id="test" class="test-sheet" hidden><!-- hoja de prueba por JS --></div>
         </div>
       </div>

@@ -130,7 +130,7 @@ button.full { width: 100%; margin: 4px 0 10px; }
 .sheet {
   position: relative;
   width: 215mm;
-  height: 330mm;
+  height: 335mm;
   background: #fff;
   box-shadow: var(--sheet-shadow);
   overflow: hidden;
@@ -152,35 +152,54 @@ button.full { width: 100%; margin: 4px 0 10px; }
    se apliquen respecto del borde de la hoja. */
 .content, .guides { position: absolute; inset: 0; transform-origin: 0 0; }
 
-.text-field {
+/* Imagen de referencia del formulario (sólo pantalla, nunca se imprime). */
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.bg[hidden] { display: none; }
+
+/* Bloque de texto posicionable. */
+.block {
   position: absolute;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  line-height: 1.15;
   color: #000;
 }
-.text-field.bold { font-weight: 700; }
+.block .ln { line-height: 1.1; }
+.block .ln.bold { font-weight: 700; }
 
-/* Recuadros guía del modo "Formulario completo". */
-.guide-box {
-  position: absolute;
-  border: 0.3mm solid #333;
-  border-radius: 1mm;
+/* Contorno de guía: visible en modo "Formulario completo" y al ubicar. */
+body.mode-full .block,
+body.edit-mode .block {
+  outline: 0.3mm dashed #888;
+  outline-offset: 0.4mm;
 }
-.guide-box.header {
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; letter-spacing: 0.15em; font-size: 5mm;
+/* Modo ubicar: los bloques se pueden arrastrar. */
+body.edit-mode .block {
+  cursor: move;
+  outline: 0.4mm solid var(--accent);
+  background: rgba(31, 111, 235, 0.06);
 }
-.guide-label {
+.block-tag {
   position: absolute;
-  font-size: 2.4mm;
+  top: -4mm;
+  left: 0;
+  font-size: 2.3mm;
   font-weight: 700;
-  color: #444;
+  color: var(--accent);
   background: #fff;
-  padding: 0 1mm;
-  transform: translateY(-50%);
+  padding: 0 0.6mm;
+  white-space: nowrap;
+  display: none;
 }
+body.edit-mode .block-tag { display: block; }
 
 /* ---------------------------- Hoja de prueba ----------------------------- */
 .test-sheet { position: absolute; inset: 0; }
@@ -204,7 +223,7 @@ button.full { width: 100%; margin: 4px 0 10px; }
 .test-title { font-weight: 700; font-size: 4mm; }
 
 /* ------------------------------ Impresión -------------------------------- */
-@page { size: 215mm 330mm; margin: 0; }
+@page { size: 215mm 335mm; margin: 0; }
 
 @media print {
   .no-print, .topbar { display: none !important; }
@@ -215,12 +234,14 @@ button.full { width: 100%; margin: 4px 0 10px; }
   .sheet { box-shadow: none; margin: 0; }
   .grid { display: none !important; }
 
+  /* Nunca se imprimen: fondo de referencia, etiquetas ni resaltado de edición. */
+  .bg, .block-tag { display: none !important; }
+  body.edit-mode .block { outline: none !important; background: none !important; }
+
   /* Modo hoja de prueba: se imprime sólo el marco patrón, sin corrección. */
-  body.test-mode #content,
-  body.test-mode #guides { display: none !important; }
+  body.test-mode #content { display: none !important; }
 }
 
 /* En pantalla, la hoja de prueba está oculta salvo que se pida imprimirla. */
 .test-sheet[hidden] { display: none; }
-body.test-mode #content,
-body.test-mode #guides { visibility: hidden; }
+body.test-mode #content { visibility: hidden; }
