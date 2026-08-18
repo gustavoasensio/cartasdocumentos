@@ -16,9 +16,9 @@
  * ---------------------------------------------------------------------------
  */
 
-// Tamaño de la hoja (Oficio vertical: 216 x 330 mm).
+// Tamaño de la hoja (Oficio vertical: 215 x 330 mm).
 // La Carta Documento de Correo Argentino se imprime en hoja oficio.
-const SHEET = { width: 216, height: 330 };
+const SHEET = { width: 215, height: 330 };
 
 // Márgenes "nominales" con los que se diseña la hoja de prueba de calibración.
 // Son los valores por defecto que ve el usuario. La hoja de prueba dibuja un

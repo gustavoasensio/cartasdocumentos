@@ -129,7 +129,7 @@ button.full { width: 100%; margin: 4px 0 10px; }
 /* La hoja se define en milímetros reales (Oficio) para que la impresión sea 1:1. */
 .sheet {
   position: relative;
-  width: 216mm;
+  width: 215mm;
   height: 330mm;
   background: #fff;
   box-shadow: var(--sheet-shadow);
@@ -204,7 +204,7 @@ button.full { width: 100%; margin: 4px 0 10px; }
 .test-title { font-weight: 700; font-size: 4mm; }
 
 /* ------------------------------ Impresión -------------------------------- */
-@page { size: 216mm 330mm; margin: 0; }
+@page { size: 215mm 330mm; margin: 0; }
 
 @media print {
   .no-print, .topbar { display: none !important; }
