@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impresor de Cartas Documento</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- ================= Barra superior ================= -->
+  <header class="topbar no-print">
+    <h1>Impresor de Cartas Documento</h1>
+    <div class="topbar-actions">
+      <label class="mode-switch">
+        Modo:
+        <select id="mode">
+          <option value="overlay">Superponer (formulario oficial)</option>
+          <option value="full">Formulario completo (papel blanco)</option>
+        </select>
+      </label>
+      <button id="btn-print" class="primary">Imprimir / PDF</button>
+    </div>
+  </header>
+
+  <div class="layout no-print-container">
+    <!-- ================= Panel de carga ================= -->
+    <aside class="panel no-print">
+      <div id="form-fields"><!-- generado por JS --></div>
+
+      <details class="calib">
+        <summary>Calibración de impresión</summary>
+        <p class="hint">
+          Ajustá estos valores hasta que el texto caiga dentro de los recuadros
+          del formulario. Se guardan en tu navegador.
+        </p>
+        <label>Desplazamiento horizontal (mm)
+          <input type="number" id="offsetX" step="0.5" value="0">
+        </label>
+        <label>Desplazamiento vertical (mm)
+          <input type="number" id="offsetY" step="0.5" value="0">
+        </label>
+        <label>Ajuste de tamaño de fuente (%)
+          <input type="number" id="fontScale" step="1" value="100">
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="showGrid"> Mostrar cuadrícula (guía, no se imprime)
+        </label>
+        <button id="btn-reset-calib" class="ghost">Restablecer calibración</button>
+      </details>
+
+      <div class="panel-actions">
+        <button id="btn-clear" class="ghost">Limpiar datos</button>
+      </div>
+      <p class="hint small">
+        Los datos se guardan automáticamente en este navegador. Nada se envía a
+        internet.
+      </p>
+    </aside>
+
+    <!-- ================= Vista previa ================= -->
+    <main class="preview-area">
+      <div class="preview-scroll">
+        <div id="sheet" class="sheet">
+          <div id="grid" class="grid" hidden></div>
+          <div id="guides" class="guides"></div>
+          <div id="content" class="content"><!-- texto posicionado por JS --></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

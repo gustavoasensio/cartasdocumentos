@@ -1,0 +1,191 @@
+/* ==========================================================================
+   Impresor de Cartas Documento — estilos
+   ========================================================================== */
+
+:root {
+  --bg: #f2f4f7;
+  --panel-bg: #ffffff;
+  --border: #d6dae1;
+  --text: #1c2430;
+  --muted: #66707d;
+  --accent: #1f6feb;
+  --accent-dark: #1552b8;
+  --sheet-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ----------------------------- Barra superior ---------------------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+}
+.topbar h1 { font-size: 17px; margin: 0; }
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.mode-switch { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+
+/* ------------------------------- Layout ---------------------------------- */
+.layout {
+  display: flex;
+  height: calc(100vh - 53px);
+}
+
+/* ----------------------------- Panel de carga ---------------------------- */
+.panel {
+  width: 360px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+}
+.field-section { margin-bottom: 18px; }
+.field-section h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.field input, .field textarea {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+.field textarea { resize: vertical; line-height: 1.4; }
+.field input:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.15);
+}
+.field-row { display: flex; gap: 8px; }
+.field-row .field { flex: 1; }
+
+/* ------------------------------ Calibración ------------------------------ */
+.calib {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  background: #fafbfc;
+}
+.calib summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.calib label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+.calib input[type="number"] {
+  width: 100%; padding: 5px 7px; font: inherit; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.calib label.checkbox { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.calib label.checkbox input { width: auto; }
+
+/* ------------------------------- Botones --------------------------------- */
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover { background: #f0f2f5; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dark); }
+button.ghost { background: transparent; color: var(--muted); }
+.panel-actions { margin: 8px 0; }
+.hint { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.hint.small { margin-top: 12px; }
+
+/* ------------------------------ Vista previa ----------------------------- */
+.preview-area { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; }
+.preview-scroll { align-self: flex-start; }
+
+/* La hoja se define en milímetros reales para que la impresión sea 1:1. */
+.sheet {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  background: #fff;
+  box-shadow: var(--sheet-shadow);
+  overflow: hidden;
+}
+
+/* Cuadrícula de calibración (cada 10 mm). No se imprime. */
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(31,111,235,0.12) 0.2mm, transparent 0.2mm),
+    linear-gradient(to bottom, rgba(31,111,235,0.12) 0.2mm, transparent 0.2mm);
+  background-size: 10mm 10mm;
+  pointer-events: none;
+}
+
+/* Contenedor donde se aplica el desplazamiento de calibración. */
+.content, .guides { position: absolute; inset: 0; }
+
+.text-field {
+  position: absolute;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.15;
+  color: #000;
+}
+.text-field.bold { font-weight: 700; }
+
+/* Recuadros guía del modo "Formulario completo". */
+.guide-box {
+  position: absolute;
+  border: 0.3mm solid #333;
+  border-radius: 1mm;
+}
+.guide-box.header {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; letter-spacing: 0.15em; font-size: 5mm;
+}
+.guide-label {
+  position: absolute;
+  font-size: 2.4mm;
+  font-weight: 700;
+  color: #444;
+  background: #fff;
+  padding: 0 1mm;
+  transform: translateY(-50%);
+}
+
+/* ------------------------------ Impresión -------------------------------- */
+@page { size: 210mm 297mm; margin: 0; }
+
+@media print {
+  .no-print, .topbar { display: none !important; }
+  html, body { background: #fff; }
+  .layout { display: block; height: auto; }
+  .preview-area { padding: 0; overflow: visible; display: block; }
+  .preview-scroll { align-self: auto; }
+  .sheet { box-shadow: none; margin: 0; }
+  .grid { display: none !important; }
+}
