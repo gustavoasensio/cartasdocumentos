@@ -316,14 +316,14 @@ datalist{position:absolute}
     <table><thead><tr><th>Campo</th><th style="width:110px">x (mm)</th><th style="width:110px">y (mm)</th><th style="width:110px">tamaño (pt)</th></tr></thead>
     <tbody id="tbCoords"></tbody></table>
     <div class="grid g4" style="margin-top:14px">
-      <div><label>Cuerpo: ancho (mm)</label><input type="number" step="1" id="txAncho" value="170"></div>
-      <div><label>Cuerpo: interlineado (mm)</label><input type="number" step="0.1" id="txInter" value="4.6"></div>
-      <div><label>Cuerpo: máx. líneas</label><input type="number" step="1" id="txMax" value="34"></div>
+      <div><label>Cuerpo: ancho (mm)</label><input type="number" step="1" id="txAncho" value="183"></div>
+      <div><label>Cuerpo: interlineado (mm)</label><input type="number" step="0.1" id="txInter" value="4.2"></div>
+      <div><label>Cuerpo: máx. líneas</label><input type="number" step="1" id="txMax" value="40"></div>
       <div><label>Achicado: tamaño / inter. / líneas</label>
         <div class="row" style="gap:4px">
           <input type="number" step="0.5" id="txSizeA" value="8" style="width:32%">
-          <input type="number" step="0.1" id="txInterA" value="3.8" style="width:32%">
-          <input type="number" step="1" id="txMaxA" value="44" style="width:32%">
+          <input type="number" step="0.1" id="txInterA" value="3.6" style="width:32%">
+          <input type="number" step="1" id="txMaxA" value="50" style="width:32%">
         </div>
       </div>
     </div>
@@ -342,54 +342,56 @@ datalist{position:absolute}
 /* ═══════════════════════════════════════════════════════════════
    GEOMETRÍA
    ═══════════════════════════════════════════════════════════════ */
-const VERSION = '1.0';                  // versión del programa (se muestra en el pie)
+const VERSION = '1.1';                  // versión del programa (se muestra en el pie)
 const MM = 2.834645669;                 // 1 mm en puntos PostScript
 const HOJA = { ancho: 216, alto: 330 }; // oficio argentino
 const NOMINAL = { sup: 5, inf: 5, izq: 3, der: 3 }; // márgenes nominales de la hoja de prueba
 
-// Estructura del formulario: dos copias apiladas.
-//   Copia A.R. (acuse) ARRIBA · Copia Carta Documento ABAJO.
-//   En cada copia: REMITENTE a la izquierda, DESTINATARIO a la derecha.
-// Los valores son estimaciones; se afinan con la grilla en Calibración.
+// Coordenadas derivadas del modelo oficial (MODELO CD .docx): dos copias
+// apiladas — A.R. (acuse) ARRIBA, Carta Documento ABAJO — y en cada copia
+// REMITENTE a la izquierda y DESTINATARIO a la derecha. Columnas medidas con la
+// misma tipografía (Helvetica≈Arial 11pt); renglones tomados del flujo del
+// documento. Se afinan con la grilla en Calibración.
 const COORDS_DEFAULT = {
   // ── Copia A.R. (arriba) · Remitente izquierda ──
-  remitente1_ar:    { et:'Remitente 1ª línea (A.R.)',     x: 18, y: 42, size:10 },
-  remitente2_ar:    { et:'Remitente 2ª línea (A.R.)',     x: 18, y: 47, size:10 },
-  domicilior_ar:    { et:'Domicilio remitente (A.R.)',    x: 18, y: 56, size:10 },
-  cpr_ar:           { et:'CP remitente (A.R.)',           x: 18, y: 65, size:10 },
-  localidadr_ar:    { et:'Localidad remitente (A.R.)',    x: 40, y: 65, size:10 },
-  provinciar_ar:    { et:'Provincia remitente (A.R.)',    x: 78, y: 65, size:10 },
+  remitente1_ar:    { et:'Remitente 1ª línea (A.R.)',     x: 20, y: 25, size:11 },
+  remitente2_ar:    { et:'Remitente 2ª línea (A.R.)',     x: 20, y: 31, size:11 },
+  domicilior_ar:    { et:'Domicilio remitente (A.R.)',    x: 21, y: 37, size:11 },
+  cpr_ar:           { et:'CP remitente (A.R.)',           x: 21, y: 43, size:11 },
+  localidadr_ar:    { et:'Localidad remitente (A.R.)',    x: 33, y: 43, size:11 },
+  provinciar_ar:    { et:'Provincia remitente (A.R.)',    x: 50, y: 43, size:11 },
   // ── Copia A.R. (arriba) · Destinatario derecha ──
-  destinatario1_ar: { et:'Destinatario 1ª línea (A.R.)',  x:112, y: 42, size:10 },
-  destinatario2_ar: { et:'Destinatario 2ª línea (A.R.)',  x:112, y: 47, size:10 },
-  domiciliod_ar:    { et:'Domicilio destinatario (A.R.)', x:112, y: 56, size:10 },
-  cpd_ar:           { et:'CP destinatario (A.R.)',        x:112, y: 65, size:10 },
-  localidadd_ar:    { et:'Localidad destinatario (A.R.)', x:134, y: 65, size:10 },
-  provinciad_ar:    { et:'Provincia destinatario (A.R.)', x:178, y: 65, size:10 },
+  destinatario1_ar: { et:'Destinatario 1ª línea (A.R.)',  x:107, y: 25, size:11 },
+  destinatario2_ar: { et:'Destinatario 2ª línea (A.R.)',  x:107, y: 31, size:11 },
+  domiciliod_ar:    { et:'Domicilio destinatario (A.R.)', x:110, y: 37, size:11 },
+  cpd_ar:           { et:'CP destinatario (A.R.)',        x:109, y: 43, size:11 },
+  localidadd_ar:    { et:'Localidad destinatario (A.R.)', x:121, y: 43, size:11 },
+  provinciad_ar:    { et:'Provincia destinatario (A.R.)', x:156, y: 43, size:11 },
 
   // ── Copia CARTA DOCUMENTO (abajo) · Remitente izquierda ──
-  remitente1:    { et:'Remitente 1ª línea (CD)',     x: 18, y: 88, size:10 },
-  remitente2:    { et:'Remitente 2ª línea (CD)',     x: 18, y: 93, size:10 },
-  domicilior:    { et:'Domicilio remitente (CD)',    x: 18, y:102, size:10 },
-  cpr:           { et:'CP remitente (CD)',           x: 18, y:111, size:10 },
-  localidadr:    { et:'Localidad remitente (CD)',    x: 40, y:111, size:10 },
-  provinciar:    { et:'Provincia remitente (CD)',    x: 78, y:111, size:10 },
+  remitente1:    { et:'Remitente 1ª línea (CD)',     x: 20, y:117, size:11 },
+  remitente2:    { et:'Remitente 2ª línea (CD)',     x: 20, y:123, size:11 },
+  domicilior:    { et:'Domicilio remitente (CD)',    x: 21, y:129, size:11 },
+  cpr:           { et:'CP remitente (CD)',           x: 21, y:136, size:11 },
+  localidadr:    { et:'Localidad remitente (CD)',    x: 33, y:136, size:11 },
+  provinciar:    { et:'Provincia remitente (CD)',    x: 50, y:136, size:11 },
   // ── Copia CARTA DOCUMENTO (abajo) · Destinatario derecha ──
-  destinatario1: { et:'Destinatario 1ª línea (CD)',  x:112, y: 88, size:10 },
-  destinatario2: { et:'Destinatario 2ª línea (CD)',  x:112, y: 93, size:10 },
-  domiciliod:    { et:'Domicilio destinatario (CD)', x:112, y:102, size:10 },
-  cpd:           { et:'CP destinatario (CD)',        x:112, y:111, size:10 },
-  localidadd:    { et:'Localidad destinatario (CD)', x:134, y:111, size:10 },
-  provinciad:    { et:'Provincia destinatario (CD)', x:178, y:111, size:10 },
+  destinatario1: { et:'Destinatario 1ª línea (CD)',  x:107, y:117, size:11 },
+  destinatario2: { et:'Destinatario 2ª línea (CD)',  x:107, y:123, size:11 },
+  domiciliod:    { et:'Domicilio destinatario (CD)', x:110, y:129, size:11 },
+  cpd:           { et:'CP destinatario (CD)',        x:109, y:136, size:11 },
+  localidadd:    { et:'Localidad destinatario (CD)', x:121, y:136, size:11 },
+  provinciad:    { et:'Provincia destinatario (CD)', x:156, y:136, size:11 },
 
-  lugarfecha:    { et:'Lugar y fecha (der.)',    x:190,  y:124,  size:10, align:'right' },
-  texto:         { et:'Cuerpo (inicio)',         x: 18,  y:132,  size:10 },
-  saludo:        { et:'Saludo (der.)',           x:190,  y:300,  size:10, align:'right' },
-  apellidoynombre:{et:'Apellido y nombres',      x: 18,  y:310,  size:10 },
-  documento:     { et:'Documento',               x: 18,  y:315,  size:10 },
-  datomas:       { et:'Dato adicional',          x: 18,  y:320,  size:10 },
+  lugarfecha:    { et:'Lugar y fecha (der.)',    x:196,  y:146,  size:10, align:'right' },
+  texto:         { et:'Cuerpo (inicio)',         x: 13,  y:153,  size: 9 },
+  saludo:        { et:'Saludo (der.)',           x:196,  y:300,  size: 9, align:'right' },
+  apellidoynombre:{et:'Apellido y nombres',      x: 13,  y:309,  size: 9 },
+  documento:     { et:'Documento',               x: 13,  y:314,  size: 9 },
+  datomas:       { et:'Dato adicional',          x: 13,  y:319,  size: 9 },
 };
-const TEXTO_DEFAULT = { ancho:170, inter:4.6, max:34, sizeA:8, interA:3.8, maxA:44 };
+// Cuerpo: ancho ≈ 13→196 mm (márgenes del modelo), interlineado 4.2 mm, 9 pt.
+const TEXTO_DEFAULT = { ancho:183, inter:4.2, max:40, sizeA:8, interA:3.6, maxA:50 };
 
 let COORDS = JSON.parse(JSON.stringify(COORDS_DEFAULT));
 let TEXTOCFG = {...TEXTO_DEFAULT};
@@ -647,8 +649,8 @@ function leerTextoCfg(){
   $(id).oninput = ()=>{ leerTextoCfg(); guardarCfg(); });
 
 async function guardarCfg(){
-  await put('config', {clave:'coords_v2', valor:COORDS});
-  await put('config', {clave:'texto', valor:TEXTOCFG});
+  await put('config', {clave:'coords_v3', valor:COORDS});
+  await put('config', {clave:'texto_v2', valor:TEXTOCFG});
   infoOffset();
 }
 function infoOffset(){
@@ -1015,8 +1017,8 @@ $('btnResetFeriados').onclick = async ()=>{
 
 (async function init(){
   await abrirDB();
-  const cfgC = (await all('config')).find(c=>c.clave==='coords_v2');
-  const cfgT = (await all('config')).find(c=>c.clave==='texto');
+  const cfgC = (await all('config')).find(c=>c.clave==='coords_v3');
+  const cfgT = (await all('config')).find(c=>c.clave==='texto_v2');
   if(cfgC && cfgC.valor){ for(const k in COORDS) if(cfgC.valor[k]) Object.assign(COORDS[k], cfgC.valor[k]); }
   if(cfgT && cfgT.valor){ TEXTOCFG = {...TEXTOCFG, ...cfgT.valor};
     sv('txAncho',TEXTOCFG.ancho);sv('txInter',TEXTOCFG.inter);sv('txMax',TEXTOCFG.max);
