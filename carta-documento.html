@@ -150,6 +150,9 @@ datalist{position:absolute}
       <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt);margin:0">
         <input type="checkbox" id="achicarletra" style="width:auto"> Achicar la letra (carta larga)
       </label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt);margin:0">
+        <input type="checkbox" id="justificar" checked style="width:auto"> Justificar el cuerpo
+      </label>
     </div>
   </fieldset>
 
@@ -348,6 +351,21 @@ const COORDS_DEFAULT = {
   cpd:           { et:'CP destinatario',         x: 22,  y: 95,  size:10 },
   localidadd:    { et:'Localidad destinatario',  x: 40,  y: 95,  size:10 },
   provinciad:    { et:'Provincia destinatario',  x: 95,  y: 95,  size:10 },
+
+  // ── Copia A.R. (acuse de retorno): mismos datos, otra posición ──
+  remitente1_ar:    { et:'Remitente 1ª línea (A.R.)',     x:118, y: 47, size:10 },
+  remitente2_ar:    { et:'Remitente 2ª línea (A.R.)',     x:118, y: 52, size:10 },
+  domicilior_ar:    { et:'Domicilio remitente (A.R.)',    x:118, y: 57, size:10 },
+  cpr_ar:           { et:'CP remitente (A.R.)',           x:118, y: 62, size:10 },
+  localidadr_ar:    { et:'Localidad remitente (A.R.)',    x:136, y: 62, size:10 },
+  provinciar_ar:    { et:'Provincia remitente (A.R.)',    x:185, y: 62, size:10 },
+  destinatario1_ar: { et:'Destinatario 1ª línea (A.R.)',  x:118, y: 80, size:10 },
+  destinatario2_ar: { et:'Destinatario 2ª línea (A.R.)',  x:118, y: 85, size:10 },
+  domiciliod_ar:    { et:'Domicilio destinatario (A.R.)', x:118, y: 90, size:10 },
+  cpd_ar:           { et:'CP destinatario (A.R.)',        x:118, y: 95, size:10 },
+  localidadd_ar:    { et:'Localidad destinatario (A.R.)', x:136, y: 95, size:10 },
+  provinciad_ar:    { et:'Provincia destinatario (A.R.)', x:185, y: 95, size:10 },
+
   lugarfecha:    { et:'Lugar y fecha (der.)',    x:190,  y:115,  size:10, align:'right' },
   texto:         { et:'Cuerpo (inicio)',         x: 22,  y:125,  size:10 },
   saludo:        { et:'Saludo (der.)',           x:190,  y:285,  size:10, align:'right' },
@@ -398,29 +416,59 @@ function dibujar(page, font, txt, xmm, ymm, size, align, off){
   page.drawText(txt, { x:p.x, y:p.y, size, font, color: rgb(0,0,0) });
 }
 
-function wrap(font, txt, size, anchoMm){
+// Devuelve las líneas como listas de palabras + si es la última de su párrafo
+// (la última no se justifica, para no estirar renglones cortos).
+function wrapPar(font, txt, size, anchoMm){
   const maxPt = anchoMm*MM, out=[];
   for(const parrafo of (txt||'').split('\n')){
-    if(!parrafo.trim()){ out.push(''); continue; }
-    let linea='';
-    for(const palabra of parrafo.split(/\s+/)){
-      const prueba = linea ? linea+' '+palabra : palabra;
-      if(font.widthOfTextAtSize(prueba,size) <= maxPt){ linea = prueba; }
-      else { if(linea) out.push(linea); linea = palabra; }
+    if(!parrafo.trim()){ out.push({words:[], last:true}); continue; }
+    let linea=[];
+    for(const palabra of parrafo.split(/\s+/).filter(Boolean)){
+      const prueba = [...linea, palabra].join(' ');
+      if(linea.length===0 || font.widthOfTextAtSize(prueba,size) <= maxPt){ linea.push(palabra); }
+      else { out.push({words:linea, last:false}); linea=[palabra]; }
     }
-    if(linea) out.push(linea);
+    out.push({words:linea, last:true});
   }
   return out;
+}
+
+// Dibuja una línea del cuerpo. Si corresponde justificar, reparte el sobrante
+// de ancho entre los espacios de la línea.
+function dibujarLinea(page, font, linea, xmm, ymm, size, anchoMm, justificar, off){
+  const words = linea.words;
+  if(!words.length) return;
+  if(!justificar || linea.last || words.length===1){
+    dibujar(page, font, words.join(' '), xmm, ymm, size, null, off);
+    return;
+  }
+  const p = toPt(xmm - off.dx, ymm - off.dy);
+  const wordsPt = words.reduce((s,w)=> s + font.widthOfTextAtSize(w,size), 0);
+  const gap = (anchoMm*MM - wordsPt) / (words.length - 1);
+  let cx = p.x;
+  for(const w of words){
+    page.drawText(w, { x:cx, y:p.y, size, font, color:rgb(0,0,0) });
+    cx += font.widthOfTextAtSize(w,size) + gap;
+  }
 }
 
 async function generarCD(){
   const { doc, page, font } = await nuevoDoc();
   const off = offsets();
-  const ach = document.getElementById('achicarletra').checked;
+  const ach = $('achicarletra').checked;
+  const justificar = $('justificar') ? $('justificar').checked : true;
 
-  for(const k of ['remitente1','remitente2','domicilior','cpr','localidadr','provinciar',
-                  'destinatario1','destinatario2','domiciliod','cpd','localidadd','provinciad',
-                  'lugarfecha','saludo','apellidoynombre','documento','datomas']){
+  // Campos de dirección: se imprimen en la copia CD y, si existe, en la A.R.
+  const ADDR = ['remitente1','remitente2','domicilior','cpr','localidadr','provinciar',
+                'destinatario1','destinatario2','domiciliod','cpd','localidadd','provinciad'];
+  for(const k of ADDR){
+    const c = COORDS[k];
+    dibujar(page, font, v(k), c.x, c.y, c.size, c.align, off);
+    const ar = COORDS[k+'_ar'];
+    if(ar) dibujar(page, font, v(k), ar.x, ar.y, ar.size, ar.align, off);
+  }
+  // Campos que van una sola vez
+  for(const k of ['lugarfecha','saludo','apellidoynombre','documento','datomas']){
     const c = COORDS[k];
     dibujar(page, font, v(k), c.x, c.y, c.size, c.align, off);
   }
@@ -429,11 +477,11 @@ async function generarCD(){
   const size  = ach ? TEXTOCFG.sizeA  : c.size;
   const inter = ach ? TEXTOCFG.interA : TEXTOCFG.inter;
   const maxL  = ach ? TEXTOCFG.maxA   : TEXTOCFG.max;
-  const lineas = wrap(font, v('texto'), size, TEXTOCFG.ancho);
+  const lineas = wrapPar(font, v('texto'), size, TEXTOCFG.ancho);
   if(lineas.length > maxL){
     toast('⚠ El texto ocupa '+lineas.length+' líneas y entran '+maxL+'. Achicá la letra o recortá.', true);
   }
-  lineas.slice(0,maxL).forEach((l,i)=> dibujar(page, font, l, c.x, c.y + i*inter, size, null, off));
+  lineas.slice(0,maxL).forEach((l,i)=> dibujarLinea(page, font, l, c.x, c.y + i*inter, size, TEXTOCFG.ancho, justificar, off));
 
   const dest = (v('destinatario1')||'CD').replace(/[^\w\s-]/g,'').trim().slice(0,30).replace(/\s+/g,'_');
   bajar(await doc.save(), 'CD_'+dest+'_'+hoyISO()+'.pdf');

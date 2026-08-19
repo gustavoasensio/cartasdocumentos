@@ -45,8 +45,10 @@ formulario real:
 ## Funcionalidades
 
 - **v1 (núcleo):** 18 campos con `maxlength`, contador de caracteres, wrap del
-  cuerpo con aviso de "no entra", generación de PDF oficio, calibración con
-  perfiles por impresora, grilla y hoja de prueba.
+  cuerpo con aviso de "no entra", **cuerpo justificado** (opcional), generación
+  de PDF oficio, calibración con perfiles por impresora, grilla y hoja de prueba.
+  Imprime Remitente y Destinatario en las **dos copias** (A.R. + Carta
+  Documento); cada copia tiene sus propias coordenadas calibrables.
 - **v2 (datos):** ABM de destinatarios y remitentes, plantillas con variables
   `{{...}}`, historial automático con nº de pieza/estado y **hash SHA-256** del
   texto, backup JSON.
