@@ -483,8 +483,10 @@ async function generarCD(){
   }
   lineas.slice(0,maxL).forEach((l,i)=> dibujarLinea(page, font, l, c.x, c.y + i*inter, size, TEXTOCFG.ancho, justificar, off));
 
+  const reg = await guardarEnHistorial('impresa', true); // guarda sola la CD generada
   const dest = (v('destinatario1')||'CD').replace(/[^\w\s-]/g,'').trim().slice(0,30).replace(/\s+/g,'_');
   bajar(await doc.save(), 'CD_'+dest+'_'+hoyISO()+'.pdf');
+  if(reg) toast('PDF generado y guardado en el historial (hash '+reg.hashTexto.slice(0,12)+'…).');
 }
 
 async function generarGrilla(){
@@ -734,17 +736,35 @@ async function insertarPlantilla(id){
 $('selPlantilla').onchange = ()=>{ if($('selPlantilla').value) insertarPlantilla($('selPlantilla').value); $('selPlantilla').value=''; };
 
 /* ---- historial ---- */
-$('btnGuardarHist').onclick = async ()=>{
-  if(!v('destinatario1')) return toast('Falta el destinatario.', true);
+// Guarda (o actualiza) la CD actual en el historial.
+//   estado: estado a registrar. auto=true → no molesta con avisos si falta algo
+//   y evita duplicar si ya existe una idéntica (mismo texto + destinatario).
+async function guardarEnHistorial(estado, auto){
+  if(!v('destinatario1')){ if(!auto) toast('Falta el destinatario.', true); return null; }
+  const hashTexto = await sha256($('texto').value);
+  const previos = await all('historial');
+  const dup = previos.find(h=> h.hashTexto===hashTexto &&
+    h.destinatarioSnapshot && h.destinatarioSnapshot.nombre1===v('destinatario1'));
+  if(dup){
+    // Ya registrada: solo avanzamos el estado (p.ej. borrador → impresa), sin duplicar.
+    if(estado && dup.estado==='borrador' && estado!=='borrador'){
+      dup.estado=estado; dup.fecha=new Date().toISOString(); await put('historial', dup);
+    }
+    if(!auto) toast('Esta CD ya estaba en el historial (hash '+hashTexto.slice(0,12)+'…).');
+    pintarHist(); return dup;
+  }
   const reg = { id:uid(), fecha:new Date().toISOString(),
     remitenteSnapshot:{nombre1:v('remitente1'),nombre2:v('remitente2'),domicilio:v('domicilior'),cp:v('cpr'),localidad:v('localidadr'),provincia:v('provinciar')},
     destinatarioSnapshot:datosDest(),
     lugarfecha:v('lugarfecha'), texto:$('texto').value, saludo:v('saludo'),
     firmante:v('apellidoynombre'), documento:v('documento'), datomas:v('datomas'),
     expediente:v('expediente'), cliente:v('cliente'), nroPiezaCorreo:v('nroPieza'),
-    estado:'borrador', hashTexto: await sha256($('texto').value) };
-  await put('historial', reg); toast('Guardada en historial. Hash: '+reg.hashTexto.slice(0,16)+'…'); pintarHist();
-};
+    estado: estado||'borrador', hashTexto };
+  await put('historial', reg);
+  if(!auto) toast('Guardada en historial. Hash: '+hashTexto.slice(0,16)+'…');
+  pintarHist(); return reg;
+}
+$('btnGuardarHist').onclick = ()=> guardarEnHistorial('borrador', false);
 async function pintarHist(){
   const f = ($('filtroHist').value||'').toLowerCase();
   const hs = (await all('historial')).filter(h=>!f||JSON.stringify(h).toLowerCase().includes(f))
