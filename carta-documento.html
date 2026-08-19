@@ -32,7 +32,8 @@ body{margin:0;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;b
 header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 header h1{font-size:16px;margin:0;font-weight:600}
 header .sub{color:var(--dim);font-size:12px}
-nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;border:1px solid var(--line);color:var(--dim);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px}
 nav button.on{background:var(--acc);border-color:var(--acc);color:#0b1220;font-weight:600}
 main{padding:20px;max-width:1100px;margin:0 auto}
@@ -74,6 +75,10 @@ datalist{position:absolute}
     <h1>Programa de Cartas — Estudio Asensio</h1>
     <div class="sub">Generación local · sin servidor · datos en este equipo</div>
   </div>
+  <div class="hdr-right">
+    <button id="hdrExport" class="gh sm">⬇ Exportar respaldo</button>
+    <button id="hdrImport" class="gh sm">⬆ Restaurar respaldo</button>
+    <input type="file" id="fileImportTop" accept=".json" style="display:none">
   <nav>
     <button data-t="redactar" class="on">Redactar</button>
     <button data-t="destinatarios">Destinatarios</button>
@@ -82,6 +87,7 @@ datalist{position:absolute}
     <button data-t="plazos">Plazos</button>
     <button data-t="calibracion">Calibración</button>
   </nav>
+  </div>
 </header>
 
 <main>
@@ -797,20 +803,32 @@ async function pintarHist(){
 $('filtroHist').oninput = pintarHist;
 
 /* ---- backup ---- */
-$('btnExport').onclick = async ()=>{
+async function exportarBackup(){
   const dump = {}; for(const s of STORES) dump[s] = await all(s);
-  dump._meta = {app:'cd-estudio', version:1, exportado:new Date().toISOString()};
+  dump._meta = {app:'cd-estudio', programa:'Programa de Cartas — Estudio Asensio',
+                version:VERSION, exportado:new Date().toISOString()};
   const url = URL.createObjectURL(new Blob([JSON.stringify(dump,null,1)],{type:'application/json'}));
-  const a=document.createElement('a'); a.href=url; a.download='backup-cd-'+hoyISO()+'.json'; a.click();
-  toast('Backup exportado. Guardalo cifrado — contiene datos de terceros.');
-};
-$('btnImport').onclick = ()=> $('fileImport').click();
-$('fileImport').onchange = async e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const d = JSON.parse(await f.text());
+  const a=document.createElement('a'); a.href=url; a.download='respaldo-cartas-'+hoyISO()+'.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  toast('Respaldo exportado. Guardalo cifrado — contiene datos de terceros.');
+}
+async function importarBackupArchivo(file){
+  if(!file) return;
+  let d; try{ d = JSON.parse(await file.text()); }
+  catch(e){ return toast('El archivo no es un respaldo válido.', true); }
+  const esValido = STORES.some(s=>Array.isArray(d[s]));
+  if(!esValido) return toast('El archivo no parece un respaldo de este programa.', true);
+  const total = STORES.reduce((n,s)=> n + ((d[s]||[]).length), 0);
+  if(!confirm('Restaurar respaldo: se agregarán/actualizarán '+total+' registros en este equipo. ¿Continuar?')) return;
   for(const s of STORES) for(const o of (d[s]||[])) await put(s,o);
-  toast('Backup importado.'); await refrescarTodo();
-};
+  toast('Respaldo restaurado ('+total+' registros).'); await refrescarTodo();
+}
+$('btnExport').onclick = exportarBackup;
+$('hdrExport').onclick = exportarBackup;
+$('btnImport').onclick = ()=> $('fileImport').click();
+$('hdrImport').onclick = ()=> $('fileImportTop').click();
+$('fileImport').onchange    = e=>{ importarBackupArchivo(e.target.files[0]); e.target.value=''; };
+$('fileImportTop').onchange = e=>{ importarBackupArchivo(e.target.files[0]); e.target.value=''; };
 
 /* ---- perfiles de impresora ---- */
 $('btnGuardarPerfil').onclick = async ()=>{
