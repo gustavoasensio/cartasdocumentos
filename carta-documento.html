@@ -342,7 +342,7 @@ datalist{position:absolute}
 /* ═══════════════════════════════════════════════════════════════
    GEOMETRÍA
    ═══════════════════════════════════════════════════════════════ */
-const VERSION = '1.1';                  // versión del programa (se muestra en el pie)
+const VERSION = '1.2';                  // versión del programa (se muestra en el pie)
 const MM = 2.834645669;                 // 1 mm en puntos PostScript
 const HOJA = { ancho: 216, alto: 330 }; // oficio argentino
 const NOMINAL = { sup: 5, inf: 5, izq: 3, der: 3 }; // márgenes nominales de la hoja de prueba
@@ -399,15 +399,21 @@ let TEXTOCFG = {...TEXTO_DEFAULT};
 // mm desde arriba-izquierda  ->  puntos pdf-lib (abajo-izquierda)
 const toPt = (xmm, ymm) => ({ x: xmm*MM, y: (HOJA.alto - ymm)*MM });
 
+// Corrección afín de impresora (posición + escala). A partir de los 4 márgenes
+// medidos en la hoja de prueba deduce cómo deforma la impresora y calcula la
+// transformación inversa para pre-deformar el contenido:
+//   x_render = sx*x + tx   ·   y_render = sy*y + ty
+// Con márgenes = nominales (5/5/3/3) da identidad (sx=sy=1, tx=ty=0).
 function offsets(){
   const izq = +v('margenIzquierdo')||NOMINAL.izq, sup = +v('margenSuperior')||NOMINAL.sup;
   const der = +v('margenDerecho')||NOMINAL.der,   inf = +v('margenInferior')||NOMINAL.inf;
-  const dx = izq - NOMINAL.izq, dy = sup - NOMINAL.sup;
-  const anchoNom = HOJA.ancho - NOMINAL.izq - NOMINAL.der;
-  const anchoMed = HOJA.ancho - izq - der;
-  const altoNom  = HOJA.alto  - NOMINAL.sup - NOMINAL.inf;
-  const altoMed  = HOJA.alto  - sup - inf;
-  return { dx, dy, ex: anchoMed>0 ? anchoNom/anchoMed : 1, ey: altoMed>0 ? altoNom/altoMed : 1 };
+  const W = HOJA.ancho, H = HOJA.alto;
+  const denX = W - izq - der, denY = H - sup - inf;
+  const sx = denX>0 ? (W - NOMINAL.izq - NOMINAL.der)/denX : 1;
+  const sy = denY>0 ? (H - NOMINAL.sup - NOMINAL.inf)/denY : 1;
+  const tx = NOMINAL.izq - izq*sx;
+  const ty = NOMINAL.sup - sup*sy;
+  return { sx, sy, tx, ty };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -425,13 +431,11 @@ async function nuevoDoc(){
 
 function dibujar(page, font, txt, xmm, ymm, size, align, off){
   if(!txt) return;
-  let x = (xmm - off.dx), y = (ymm - off.dy);
-  if(align === 'right'){
-    const w = font.widthOfTextAtSize(txt, size)/MM;
-    x -= w;
-  }
+  const sz = size * off.sx;                       // el texto se pre-agranda para cancelar el achique de la impresora
+  let x = off.sx*xmm + off.tx, y = off.sy*ymm + off.ty;
+  if(align === 'right'){ x -= font.widthOfTextAtSize(txt, sz)/MM; }
   const p = toPt(x, y);
-  page.drawText(txt, { x:p.x, y:p.y, size, font, color: rgb(0,0,0) });
+  page.drawText(txt, { x:p.x, y:p.y, size:sz, font, color: rgb(0,0,0) });
 }
 
 // Devuelve las líneas como listas de palabras + si es la última de su párrafo
@@ -460,13 +464,14 @@ function dibujarLinea(page, font, linea, xmm, ymm, size, anchoMm, justificar, of
     dibujar(page, font, words.join(' '), xmm, ymm, size, null, off);
     return;
   }
-  const p = toPt(xmm - off.dx, ymm - off.dy);
-  const wordsPt = words.reduce((s,w)=> s + font.widthOfTextAtSize(w,size), 0);
-  const gap = (anchoMm*MM - wordsPt) / (words.length - 1);
+  const sz = size * off.sx;
+  const p = toPt(off.sx*xmm + off.tx, off.sy*ymm + off.ty);
+  const wordsPt = words.reduce((s,w)=> s + font.widthOfTextAtSize(w,sz), 0);
+  const gap = (anchoMm*off.sx*MM - wordsPt) / (words.length - 1);
   let cx = p.x;
   for(const w of words){
-    page.drawText(w, { x:cx, y:p.y, size, font, color:rgb(0,0,0) });
-    cx += font.widthOfTextAtSize(w,size) + gap;
+    page.drawText(w, { x:cx, y:p.y, size:sz, font, color:rgb(0,0,0) });
+    cx += font.widthOfTextAtSize(w,sz) + gap;
   }
 }
 
@@ -655,8 +660,8 @@ async function guardarCfg(){
 }
 function infoOffset(){
   const o = offsets();
-  $('infoOffset').textContent = 'Corrección aplicada → X: '+o.dx.toFixed(1)+' mm · Y: '+o.dy.toFixed(1)+
-    ' mm · escala X: '+o.ex.toFixed(4)+' · escala Y: '+o.ey.toFixed(4);
+  $('infoOffset').textContent = 'Corrección aplicada → escala X: '+o.sx.toFixed(4)+' · escala Y: '+o.sy.toFixed(4)+
+    ' · desplaz. X: '+o.tx.toFixed(1)+' mm · Y: '+o.ty.toFixed(1)+' mm';
 }
 ['margenSuperior','margenInferior','margenIzquierdo','margenDerecho'].forEach(id=> $(id).oninput = infoOffset);
 
